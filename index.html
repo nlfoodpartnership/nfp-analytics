@@ -2392,6 +2392,9 @@ async function doLogin() {
 }
 
 async function checkAuth() {
+  // Static deploy — skip server auth, show dashboard with demo data directly
+  hideLoginOverlay();
+  return;
   if (!authToken) {
     showLoginOverlay();
     return;
