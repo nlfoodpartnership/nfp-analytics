@@ -1007,28 +1007,28 @@
       <div class="kpi-grid" style="grid-template-columns: repeat(5, 1fr);">
         <div class="kpi-card blue">
           <div class="kpi-label">Total Subscribers</div>
-          <div class="kpi-value">6,842</div>
-          <div class="kpi-trend up">↑ 187 this month</div>
+          <div class="kpi-value" id="nl-kpi-subscribers">—</div>
+          <div class="kpi-trend" id="nl-kpi-subscribers-trend"></div>
         </div>
         <div class="kpi-card green">
           <div class="kpi-label">Avg Open Rate</div>
-          <div class="kpi-value">34.7%</div>
-          <div class="kpi-trend up">↑ 1.2 pts</div>
+          <div class="kpi-value" id="nl-kpi-openrate">—</div>
+          <div class="kpi-trend" id="nl-kpi-openrate-trend"></div>
         </div>
         <div class="kpi-card amber">
           <div class="kpi-label">Avg Click Rate</div>
-          <div class="kpi-value">8.3%</div>
-          <div class="kpi-trend up">↑ 0.4 pts</div>
+          <div class="kpi-value" id="nl-kpi-clickrate">—</div>
+          <div class="kpi-trend" id="nl-kpi-clickrate-trend"></div>
         </div>
         <div class="kpi-card purple">
           <div class="kpi-label">Issues Sent (YTD)</div>
-          <div class="kpi-value">24</div>
-          <div class="kpi-trend neutral">Bi-weekly cadence</div>
+          <div class="kpi-value" id="nl-kpi-issues">—</div>
+          <div class="kpi-trend" id="nl-kpi-issues-trend"></div>
         </div>
         <div class="kpi-card teal">
-          <div class="kpi-label">Unsubscribe Rate</div>
-          <div class="kpi-value">0.4%</div>
-          <div class="kpi-trend up">↓ 0.1 pts</div>
+          <div class="kpi-label">Active Subscribers</div>
+          <div class="kpi-value" id="nl-kpi-active">—</div>
+          <div class="kpi-trend" id="nl-kpi-active-trend"></div>
         </div>
       </div>
 
@@ -2559,33 +2559,42 @@ async function fetchLiveData() {
     const emails = await emailsRes.json();
 
     if (subs.configured && !subs.error) {
-      const subsEl = $('kpi-subscribers');
-      if (subsEl) subsEl.textContent = fmt(subs.total);
+      const total = subs.total || 0;
+      const active = (subs.data || []).filter(s => s.status === 'active').length;
 
-      const nlSection = $('section-newsletter');
-      if (nlSection) {
-        const kpiValues = nlSection.querySelectorAll('.kpi-value');
-        if (kpiValues[0]) kpiValues[0].textContent = fmtN(subs.total);
-        if (kpiValues[0] && subs.recentGrowth !== null) {
-          const trend = kpiValues[0].nextElementSibling;
-          if (trend) trend.textContent = `↑ ${fmtN(subs.recentGrowth)} this month`;
-        }
-      }
+      const set = (id, val) => { const el = $(id); if (el) el.textContent = val; };
+      set('kpi-subscribers', fmtN(total));
+      set('nl-kpi-subscribers', fmtN(total));
+      set('nl-kpi-active', fmtN(active));
+      set('nl-kpi-active-trend', active < total ? `${total - active} bounced / unsubscribed` : 'All active');
     }
 
     if (emails.configured && !emails.error && emails.emails && emails.emails.length > 0) {
+      const list = emails.emails;
+      const ytdStart = new Date(new Date().getFullYear(), 0, 1);
+      const ytd = list.filter(e => e.sentAt && new Date(e.sentAt) >= ytdStart);
+
+      const avgOpen = list.reduce((s, e) => s + (e.openRate || 0), 0) / list.length;
+      const avgClick = list.reduce((s, e) => s + (e.clickRate || 0), 0) / list.length;
+
+      const set = (id, val) => { const el = $(id); if (el) el.textContent = val; };
+      set('nl-kpi-openrate', (avgOpen * 100).toFixed(1) + '%');
+      set('nl-kpi-clickrate', (avgClick * 100).toFixed(1) + '%');
+      set('nl-kpi-issues', ytd.length || list.length);
+      set('nl-kpi-issues-trend', ytd.length ? `${ytd.length} sent this year` : `${list.length} total`);
+
       const tbody = $('table-newsletter-issues');
       if (tbody) {
-        tbody.innerHTML = emails.emails.map((e, i) => `
+        tbody.innerHTML = list.map((e, i) => `
           <tr>
-            <td><span class="badge badge-gray">#${emails.emails.length - i}</span></td>
+            <td><span class="badge badge-gray">#${list.length - i}</span></td>
             <td class="text-muted text-sm">${e.sentAt ? new Date(e.sentAt).toLocaleDateString('en-CA', {year:'numeric',month:'short',day:'numeric'}) : '—'}</td>
-            <td class="table-primary">${e.subject}</td>
-            <td>${fmtN(e.sentCount)}</td>
+            <td class="table-primary">${e.subject || '—'}</td>
+            <td>${e.sentCount ? fmtN(e.sentCount) : '—'}</td>
             <td>—</td>
-            <td><span class="badge badge-blue">${(e.openRate * 100).toFixed(1)}%</span></td>
+            <td>${e.openRate != null ? '<span class="badge badge-blue">' + (e.openRate * 100).toFixed(1) + '%</span>' : '—'}</td>
             <td>—</td>
-            <td><span class="badge badge-green">${(e.clickRate * 100).toFixed(1)}%</span></td>
+            <td>${e.clickRate != null ? '<span class="badge badge-green">' + (e.clickRate * 100).toFixed(1) + '%</span>' : '—'}</td>
           </tr>
         `).join('');
       }
