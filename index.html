@@ -2364,37 +2364,28 @@ function hideLoginOverlay() {
   if (overlay) overlay.style.display = 'none';
 }
 
+// Set your shared team password here — change it and redeploy to update
+const DASHBOARD_PASSWORD = '!EbY5xe3Xnsf';
+
 async function doLogin() {
   const passwordEl = $('login-password');
   const errorEl = $('login-error');
   const password = passwordEl ? passwordEl.value : '';
   if (!password) return;
-  try {
-    const res = await fetch(`${API_BASE}/api/auth`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
-    });
-    const data = await res.json();
-    if (data.ok && data.token) {
-      authToken = data.token;
-      sessionStorage.setItem('nfp_auth_token', authToken);
-      if (errorEl) errorEl.style.display = 'none';
-      hideLoginOverlay();
-      fetchLiveData();
-    } else {
-      if (errorEl) errorEl.style.display = 'block';
-      if (passwordEl) passwordEl.value = '';
-    }
-  } catch (_) {
+  if (password === DASHBOARD_PASSWORD) {
+    sessionStorage.setItem('nfp_authed', 'yes');
+    if (errorEl) errorEl.style.display = 'none';
+    hideLoginOverlay();
+  } else {
     if (errorEl) errorEl.style.display = 'block';
+    if (passwordEl) passwordEl.value = '';
   }
 }
 
 async function checkAuth() {
-  // Static deploy — skip server auth, show dashboard with demo data directly
-  hideLoginOverlay();
-  return;
+  const stored = sessionStorage.getItem('nfp_authed');
+  if (stored === 'yes') { hideLoginOverlay(); return; }
+  showLoginOverlay();
   if (!authToken) {
     showLoginOverlay();
     return;
