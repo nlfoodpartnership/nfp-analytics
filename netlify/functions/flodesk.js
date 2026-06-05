@@ -19,16 +19,22 @@ exports.handler = async (event) => {
 
   try {
     if (type === 'subscribers') {
+      // Find the Newsletter segment ID
+      const segRes = await fetch(`${baseUrl}/segments`, { headers });
+      const segData = await segRes.json();
+      const newsletterSeg = (segData.data || []).find(s => s.name === 'Newsletter');
+      const segParam = newsletterSeg ? `&segment_id=${newsletterSeg.id}` : '';
+
       let all = [], page = 1, hasMore = true;
       while (hasMore) {
-        const r = await fetch(`${baseUrl}/subscribers?page=${page}&per_page=100`, { headers });
+        const r = await fetch(`${baseUrl}/subscribers?page=${page}&per_page=100${segParam}`, { headers });
         const data = await r.json();
         const items = data.data || [];
         all = all.concat(items);
         hasMore = items.length === 100;
         page++;
       }
-      return json({ configured: true, total: all.length, data: all });
+      return json({ configured: true, total: all.length, data: all, segment: newsletterSeg?.name || 'all' });
     }
 
     if (type === 'emails') {
