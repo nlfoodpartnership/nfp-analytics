@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nfp-analytics-static",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["-e", "const h=require('http'),fs=require('fs'),path=require('path'),port=process.env.PORT||4321;h.createServer((req,res)=>{let f=path.join('.',req.url==='/'?'/index.html':req.url);try{res.end(fs.readFileSync(f));}catch(e){res.writeHead(404);res.end('Not found');}}).listen(port,()=>console.log('Listening on '+port));"],
+      "port": 4321,
+      "autoPort": true
+    }
+  ]
+}

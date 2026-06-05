@@ -1,0 +1,2621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NFP Analytics</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --primary: #2563EB;
+    --primary-light: #3B82F6;
+    --primary-dark: #1D4ED8;
+    --success: #10B981;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --sidebar-bg: #1E293B;
+    --sidebar-hover: #334155;
+    --sidebar-active: #2563EB;
+    --text-primary: #1E293B;
+    --text-secondary: #64748B;
+    --text-muted: #94A3B8;
+    --bg-main: #F8FAFC;
+    --bg-card: #FFFFFF;
+    --border: #E2E8F0;
+    --border-light: #F1F5F9;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.05);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    display: flex;
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: 240px;
+    min-width: 240px;
+    background: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    z-index: 100;
+    overflow-y: auto;
+  }
+
+  .sidebar-logo {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .sidebar-logo .logo-text {
+    font-size: 17px;
+    font-weight: 700;
+    color: #FFFFFF;
+    letter-spacing: -0.3px;
+  }
+
+  .sidebar-logo .logo-sub {
+    font-size: 11px;
+    color: #94A3B8;
+    margin-top: 2px;
+  }
+
+  .sidebar-nav {
+    padding: 12px 8px;
+    flex: 1;
+  }
+
+  .nav-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #64748B;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 8px 12px 4px;
+    margin-top: 4px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: #94A3B8;
+    font-size: 13.5px;
+    font-weight: 500;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .nav-item:hover { background: var(--sidebar-hover); color: #E2E8F0; }
+
+  .nav-item.active {
+    background: var(--sidebar-active);
+    color: #FFFFFF;
+  }
+
+  .nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+
+  .sidebar-footer {
+    padding: 12px 8px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+
+  /* ── Main Content ── */
+  #main {
+    margin-left: 240px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  #header {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .header-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+  }
+
+  .header-date {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-outline { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+  .btn-outline:hover { background: var(--border-light); color: var(--text-primary); }
+  .btn-ghost { background: transparent; color: var(--text-secondary); }
+  .btn-ghost:hover { background: var(--border-light); }
+
+  /* ── Demo Badge ── */
+  #demo-banner {
+    background: linear-gradient(90deg, #FEF3C7, #FDE68A);
+    border-bottom: 1px solid #FCD34D;
+    padding: 8px 28px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #92400E;
+  }
+
+  #demo-banner .demo-badge {
+    background: #F59E0B;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  #demo-banner button {
+    margin-left: auto;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #92400E;
+    font-size: 16px;
+    padding: 0 4px;
+    opacity: 0.7;
+  }
+
+  #demo-banner button:hover { opacity: 1; }
+
+  /* ── Page Content ── */
+  #content {
+    padding: 28px;
+    flex: 1;
+  }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── Section Header ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .section-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    flex: 1;
+  }
+
+  /* ── Date Range Picker ── */
+  .date-range-picker {
+    display: flex;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .date-range-picker button {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-right: 1px solid var(--border);
+  }
+
+  .date-range-picker button:last-child { border-right: none; }
+  .date-range-picker button:hover { background: var(--border-light); color: var(--text-primary); }
+  .date-range-picker button.active { background: var(--primary); color: white; }
+
+  /* ── KPI Cards ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+
+  .kpi-card.blue::before { background: var(--primary); }
+  .kpi-card.green::before { background: var(--success); }
+  .kpi-card.amber::before { background: var(--warning); }
+  .kpi-card.purple::before { background: #8B5CF6; }
+  .kpi-card.red::before { background: var(--danger); }
+  .kpi-card.teal::before { background: #14B8A6; }
+
+  .kpi-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+
+  .kpi-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .kpi-trend {
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .kpi-trend.up { color: var(--success); }
+  .kpi-trend.down { color: var(--danger); }
+  .kpi-trend.neutral { color: var(--text-muted); }
+  .kpi-icon { font-size: 20px; float: right; margin-top: -4px; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+  }
+
+  .card-subtitle {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .card-body { padding: 20px; }
+
+  /* ── Grid Layouts ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead th {
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--border-light);
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-primary);
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: #F8FAFC; }
+
+  .table-primary { font-weight: 500; }
+  .table-mono { font-family: monospace; font-size: 12px; color: var(--text-secondary); }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 20px;
+  }
+
+  .tab-btn {
+    padding: 10px 20px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.15s;
+  }
+
+  .tab-btn:hover { color: var(--text-primary); }
+  .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* ── Social Cards ── */
+  .social-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .social-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .social-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .social-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .social-name { font-size: 14px; font-weight: 600; }
+  .social-handle { font-size: 11px; color: var(--text-muted); }
+
+  .social-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .social-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .social-stat-value { font-size: 20px; font-weight: 700; margin: 2px 0; }
+  .social-stat-trend { font-size: 11px; }
+
+  /* ── Sparkline canvas ── */
+  .sparkline-wrap { height: 40px; margin-top: 12px; }
+
+  /* ── Config Panel ── */
+  #config-panel {
+    display: none;
+    position: fixed;
+    top: 0; right: 0;
+    width: 380px;
+    height: 100vh;
+    background: var(--bg-card);
+    border-left: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    z-index: 200;
+    overflow-y: auto;
+    flex-direction: column;
+  }
+
+  #config-panel.open { display: flex; }
+
+  .config-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .config-header h3 { font-size: 16px; font-weight: 600; flex: 1; }
+
+  .config-body { padding: 20px; flex: 1; }
+
+  .config-section {
+    margin-bottom: 24px;
+  }
+
+  .config-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .form-group { margin-bottom: 14px; }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+  }
+
+  input[type="text"], input[type="password"], input[type="number"] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: var(--text-primary);
+    background: var(--bg-main);
+    transition: border-color 0.15s;
+    outline: none;
+  }
+
+  input:focus { border-color: var(--primary); background: white; }
+
+  .config-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+  }
+
+  /* ── Progress Bar ── */
+  .progress-bar-wrap {
+    background: var(--border-light);
+    border-radius: 20px;
+    height: 6px;
+    overflow: hidden;
+    flex: 1;
+  }
+
+  .progress-bar {
+    height: 100%;
+    border-radius: 20px;
+    background: var(--primary);
+  }
+
+  /* ── Misc ── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .badge-blue { background: #DBEAFE; color: #1E40AF; }
+  .badge-green { background: #D1FAE5; color: #065F46; }
+  .badge-amber { background: #FEF3C7; color: #92400E; }
+  .badge-gray { background: var(--border-light); color: var(--text-secondary); }
+
+  .mb-4 { margin-bottom: 16px; }
+  .mb-5 { margin-bottom: 20px; }
+  .mb-6 { margin-bottom: 24px; }
+
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+  .text-sm { font-size: 12px; }
+  .text-muted { color: var(--text-muted); }
+  .text-success { color: var(--success); }
+  .text-danger { color: var(--danger); }
+  .font-mono { font-family: monospace; }
+
+  .flex { display: flex; }
+  .items-center { align-items: center; }
+  .gap-2 { gap: 8px; }
+
+  /* ── Overlay ── */
+  #overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 150;
+  }
+
+  #overlay.open { display: block; }
+
+  /* ── Chart containers ── */
+  .chart-container { position: relative; }
+  .chart-container canvas { max-height: 100%; }
+
+  /* ── No data state ── */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+  }
+
+  .empty-state .empty-icon { font-size: 36px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* ── Refresh spinner ── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinning { animation: spin 0.8s linear infinite; display: inline-block; }
+</style>
+</head>
+<body>
+
+<!-- Login Overlay -->
+<div id="login-overlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.85); z-index:9999; display:flex; align-items:center; justify-content:center;">
+  <div style="background:white; border-radius:14px; padding:40px; width:380px; box-shadow:0 25px 50px rgba(0,0,0,0.3); text-align:center;">
+    <div style="font-size:36px; margin-bottom:12px;">📊</div>
+    <h2 style="font-size:22px; font-weight:700; color:#1E293B; margin-bottom:6px;">NFP Analytics</h2>
+    <p style="color:#64748B; font-size:14px; margin-bottom:28px;">Internal Dashboard — Enter your access password</p>
+    <input type="password" id="login-password" placeholder="Password" style="width:100%; padding:12px 14px; border:1.5px solid #E2E8F0; border-radius:8px; font-size:15px; outline:none; margin-bottom:12px;">
+    <button id="login-btn" style="width:100%; padding:12px; background:#2563EB; color:white; border:none; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer;">Access Dashboard →</button>
+    <p id="login-error" style="color:#EF4444; font-size:13px; margin-top:10px; display:none;">Incorrect password. Try again.</p>
+  </div>
+</div>
+
+<!-- Sidebar -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text">📊 NFP Analytics</div>
+    <div class="logo-sub">Internal Dashboard</div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-label">Dashboard</div>
+    <div class="nav-item active" data-section="overview">
+      <span class="nav-icon">🏠</span> Overview
+    </div>
+    <div class="nav-label">Channels</div>
+    <div class="nav-item" data-section="websites">
+      <span class="nav-icon">🌐</span> Websites
+    </div>
+    <div class="nav-item" data-section="social">
+      <span class="nav-icon">📱</span> Social Media
+    </div>
+    <div class="nav-item" data-section="newsletter">
+      <span class="nav-icon">📧</span> Newsletter
+    </div>
+    <div class="nav-item" data-section="linkedin-newsletter">
+      <span class="nav-icon">💼</span> LinkedIn Newsletter
+    </div>
+    <div class="nav-item" data-section="youtube">
+      <span class="nav-icon">▶️</span> YouTube
+    </div>
+    <div class="nav-item" data-section="publications">
+      <span class="nav-icon">📄</span> Issuu Publications
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="nav-item" id="settings-btn">
+      <span class="nav-icon">⚙️</span> Settings &amp; API Config
+    </div>
+  </div>
+</nav>
+
+<!-- Main -->
+<div id="main">
+  <!-- Header -->
+  <header id="header">
+    <div class="header-title" id="page-title">Overview</div>
+    <div class="header-date" id="current-date"></div>
+    <button class="btn btn-outline" id="refresh-btn">
+      <span id="refresh-icon">↻</span> Refresh Data
+    </button>
+    <button class="btn btn-ghost" id="settings-btn-header" title="Settings">⚙️</button>
+  </header>
+
+  <!-- Demo Banner -->
+  <div id="demo-banner">
+    <span class="demo-badge">Demo Data</span>
+    <span>This dashboard is showing realistic sample data. Enter your API credentials in <strong>Settings</strong> to load live data.</span>
+    <button onclick="document.getElementById('demo-banner').style.display='none'" title="Dismiss">✕</button>
+  </div>
+
+  <!-- Content -->
+  <div id="content">
+
+    <!-- ═══════════════════════════════════════
+         OVERVIEW
+    ═══════════════════════════════════════ -->
+    <div id="section-overview" class="section active">
+      <div class="section-header">
+        <h2>Overview</h2>
+        <div class="date-range-picker" data-section="overview">
+          <button class="active" data-days="30">30 Days</button>
+          <button data-days="7">7 Days</button>
+          <button data-days="90">90 Days</button>
+        </div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid" id="overview-kpis">
+        <div class="kpi-card blue">
+          <div class="kpi-icon">🌐</div>
+          <div class="kpi-label">Total Website Visitors</div>
+          <div class="kpi-value" id="kpi-visitors">24,817</div>
+          <div class="kpi-trend up">↑ 12.4% vs prev period</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-icon">📱</div>
+          <div class="kpi-label">Social Followers</div>
+          <div class="kpi-value" id="kpi-followers">18,240</div>
+          <div class="kpi-trend up">↑ 3.1% vs prev period</div>
+        </div>
+        <div class="kpi-card amber">
+          <div class="kpi-icon">📧</div>
+          <div class="kpi-label">Newsletter Subscribers</div>
+          <div class="kpi-value" id="kpi-subscribers">6,842</div>
+          <div class="kpi-trend up">↑ 2.8% vs prev period</div>
+        </div>
+        <div class="kpi-card purple">
+          <div class="kpi-icon">▶️</div>
+          <div class="kpi-label">YouTube Subscribers</div>
+          <div class="kpi-value" id="kpi-yt-subs">3,156</div>
+          <div class="kpi-trend up">↑ 5.7% vs prev period</div>
+        </div>
+        <div class="kpi-card teal">
+          <div class="kpi-icon">📄</div>
+          <div class="kpi-label">Total Publications</div>
+          <div class="kpi-value" id="kpi-pubs">48</div>
+          <div class="kpi-trend neutral">2 new this month</div>
+        </div>
+        <div class="kpi-card red">
+          <div class="kpi-icon">👁️</div>
+          <div class="kpi-label">Total Reach (Est.)</div>
+          <div class="kpi-value" id="kpi-reach">97.4K</div>
+          <div class="kpi-trend up">↑ 8.2% vs prev period</div>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="grid-2 mb-6">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Combined Website Traffic</div>
+            <span class="badge badge-blue">Last 30 Days</span>
+          </div>
+          <div class="card-body">
+            <div class="chart-container" style="height:220px">
+              <canvas id="chart-overview-traffic"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Channel Traffic Breakdown</div>
+          </div>
+          <div class="card-body">
+            <div class="chart-container" style="height:220px">
+              <canvas id="chart-overview-channels"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity Feed -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Recent Activity</div>
+          <span class="text-sm text-muted">Last updated today</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Channel</th>
+                <th>Value</th>
+                <th>Change</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="overview-activity-table">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         WEBSITES
+    ═══════════════════════════════════════ -->
+    <div id="section-websites" class="section">
+      <div class="section-header">
+        <h2>Websites</h2>
+        <div class="date-range-picker" data-section="websites">
+          <button class="active" data-days="30">30 Days</button>
+          <button data-days="7">7 Days</button>
+          <button data-days="90">90 Days</button>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="site-nlfp">nlfoodpartnership.com</button>
+        <button class="tab-btn" data-tab="site-nfpc">nfpconnects.com</button>
+      </div>
+
+      <!-- NLFP Tab -->
+      <div id="tab-site-nlfp" class="tab-pane active">
+        <div class="kpi-grid" style="grid-template-columns: repeat(4, 1fr);">
+          <div class="kpi-card blue">
+            <div class="kpi-label">Unique Visitors</div>
+            <div class="kpi-value">14,382</div>
+            <div class="kpi-trend up">↑ 11.2%</div>
+          </div>
+          <div class="kpi-card green">
+            <div class="kpi-label">Pageviews</div>
+            <div class="kpi-value">38,910</div>
+            <div class="kpi-trend up">↑ 14.7%</div>
+          </div>
+          <div class="kpi-card amber">
+            <div class="kpi-label">Bounce Rate</div>
+            <div class="kpi-value">42.3%</div>
+            <div class="kpi-trend up">↓ 2.1 pts</div>
+          </div>
+          <div class="kpi-card purple">
+            <div class="kpi-label">Avg Session</div>
+            <div class="kpi-value">3:24</div>
+            <div class="kpi-trend up">↑ 0:18</div>
+          </div>
+        </div>
+
+        <div class="grid-2 mb-5">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Weekly Visitor Trend</div>
+            </div>
+            <div class="card-body">
+              <div class="chart-container" style="height:200px">
+                <canvas id="chart-nlfp-trend"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Traffic Sources</div>
+            </div>
+            <div class="card-body">
+              <div class="chart-container" style="height:200px">
+                <canvas id="chart-nlfp-sources"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Top Pages</div>
+            <span class="badge badge-blue">nlfoodpartnership.com</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Page</th><th>Pageviews</th><th>Unique Views</th><th>Avg Time</th><th>Bounce Rate</th><th>Trend</th></tr>
+              </thead>
+              <tbody id="table-nlfp-pages"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- NFPConnects Tab -->
+      <div id="tab-site-nfpc" class="tab-pane">
+        <div class="kpi-grid" style="grid-template-columns: repeat(4, 1fr);">
+          <div class="kpi-card blue">
+            <div class="kpi-label">Unique Visitors</div>
+            <div class="kpi-value">10,435</div>
+            <div class="kpi-trend up">↑ 14.1%</div>
+          </div>
+          <div class="kpi-card green">
+            <div class="kpi-label">Pageviews</div>
+            <div class="kpi-value">27,640</div>
+            <div class="kpi-trend up">↑ 18.3%</div>
+          </div>
+          <div class="kpi-card amber">
+            <div class="kpi-label">Bounce Rate</div>
+            <div class="kpi-value">38.7%</div>
+            <div class="kpi-trend up">↓ 3.4 pts</div>
+          </div>
+          <div class="kpi-card purple">
+            <div class="kpi-label">Avg Session</div>
+            <div class="kpi-value">4:07</div>
+            <div class="kpi-trend up">↑ 0:31</div>
+          </div>
+        </div>
+
+        <div class="grid-2 mb-5">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Weekly Visitor Trend</div>
+            </div>
+            <div class="card-body">
+              <div class="chart-container" style="height:200px">
+                <canvas id="chart-nfpc-trend"></canvas>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Traffic Sources</div>
+            </div>
+            <div class="card-body">
+              <div class="chart-container" style="height:200px">
+                <canvas id="chart-nfpc-sources"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Top Pages</div>
+            <span class="badge badge-blue">nfpconnects.com</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Page</th><th>Pageviews</th><th>Unique Views</th><th>Avg Time</th><th>Bounce Rate</th><th>Trend</th></tr>
+              </thead>
+              <tbody id="table-nfpc-pages"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         SOCIAL MEDIA
+    ═══════════════════════════════════════ -->
+    <div id="section-social" class="section">
+      <div class="section-header">
+        <h2>Social Media</h2>
+        <div class="date-range-picker" data-section="social">
+          <button class="active" data-days="30">30 Days</button>
+          <button data-days="7">7 Days</button>
+          <button data-days="90">90 Days</button>
+        </div>
+      </div>
+
+      <div class="social-grid" id="social-cards-grid"></div>
+
+      <div class="grid-2 mb-5">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Follower Growth — All Platforms</div>
+          </div>
+          <div class="card-body">
+            <div class="chart-container" style="height:220px">
+              <canvas id="chart-social-growth"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Engagement Rate by Platform</div>
+          </div>
+          <div class="card-body">
+            <div class="chart-container" style="height:220px">
+              <canvas id="chart-social-engagement"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Top Performing Posts This Month</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Platform</th><th>Post Preview</th><th>Date</th><th>Reach</th><th>Engagements</th><th>Eng. Rate</th></tr>
+            </thead>
+            <tbody id="table-social-posts"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         NEWSLETTER
+    ═══════════════════════════════════════ -->
+    <div id="section-newsletter" class="section">
+      <div class="section-header">
+        <h2>Newsletter</h2>
+        <div class="date-range-picker" data-section="newsletter">
+          <button class="active" data-days="30">30 Days</button>
+          <button data-days="7">7 Days</button>
+          <button data-days="90">90 Days</button>
+        </div>
+      </div>
+
+      <div class="kpi-grid" style="grid-template-columns: repeat(5, 1fr);">
+        <div class="kpi-card blue">
+          <div class="kpi-label">Total Subscribers</div>
+          <div class="kpi-value">6,842</div>
+          <div class="kpi-trend up">↑ 187 this month</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">Avg Open Rate</div>
+          <div class="kpi-value">34.7%</div>
+          <div class="kpi-trend up">↑ 1.2 pts</div>
+        </div>
+        <div class="kpi-card amber">
+          <div class="kpi-label">Avg Click Rate</div>
+          <div class="kpi-value">8.3%</div>
+          <div class="kpi-trend up">↑ 0.4 pts</div>
+        </div>
+        <div class="kpi-card purple">
+          <div class="kpi-label">Issues Sent (YTD)</div>
+          <div class="kpi-value">24</div>
+          <div class="kpi-trend neutral">Bi-weekly cadence</div>
+        </div>
+        <div class="kpi-card teal">
+          <div class="kpi-label">Unsubscribe Rate</div>
+          <div class="kpi-value">0.4%</div>
+          <div class="kpi-trend up">↓ 0.1 pts</div>
+        </div>
+      </div>
+
+      <div class="grid-2 mb-5">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Subscriber Growth</div>
+          </div>
+          <div class="card-body">
+            <div class="chart-container" style="height:210px">
+              <canvas id="chart-newsletter-growth"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Open &amp; Click Rates — Recent Issues</div>
+          </div>
+          <div class="card-body">
+            <div class="chart-container" style="height:210px">
+              <canvas id="chart-newsletter-rates"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-5">
+        <div class="card-header">
+          <div class="card-title">Recent Issues Performance</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Issue</th><th>Date Sent</th><th>Subject</th><th>Delivered</th><th>Opens</th><th>Open Rate</th><th>Clicks</th><th>Click Rate</th></tr>
+            </thead>
+            <tbody id="table-newsletter-issues"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Top Clicked Links — Latest Issue</div>
+          <span class="badge badge-blue">Flodesk</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Link</th><th>URL</th><th>Clicks</th><th>Unique Clicks</th><th>% of Openers</th></tr>
+            </thead>
+            <tbody id="table-newsletter-links"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         LINKEDIN NEWSLETTER
+    ═══════════════════════════════════════ -->
+    <div id="section-linkedin-newsletter" class="section">
+      <div class="section-header">
+        <h2>LinkedIn Newsletter</h2>
+        <div class="date-range-picker" data-section="linkedin-newsletter">
+          <button class="active" data-days="30">30 Days</button>
+          <button data-days="7">7 Days</button>
+          <button data-days="90">90 Days</button>
+        </div>
+      </div>
+
+      <div class="kpi-grid" style="grid-template-columns: repeat(5, 1fr);">
+        <div class="kpi-card blue">
+          <div class="kpi-label">Total Subscribers</div>
+          <div class="kpi-value">3,284</div>
+          <div class="kpi-trend up">↑ 214 this month</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">Avg Open Rate</div>
+          <div class="kpi-value">41.2%</div>
+          <div class="kpi-trend up">↑ 2.4 pts</div>
+        </div>
+        <div class="kpi-card amber">
+          <div class="kpi-label">Avg Impressions</div>
+          <div class="kpi-value">8,420</div>
+          <div class="kpi-trend up">↑ 18.7%</div>
+        </div>
+        <div class="kpi-card purple">
+          <div class="kpi-label">Issues Published</div>
+          <div class="kpi-value">18</div>
+          <div class="kpi-trend neutral">Monthly cadence</div>
+        </div>
+        <div class="kpi-card teal">
+          <div class="kpi-label">Avg Reactions</div>
+          <div class="kpi-value">124</div>
+          <div class="kpi-trend up">↑ 9.3%</div>
+        </div>
+      </div>
+
+      <div class="grid-2 mb-5">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Subscriber Growth</div>
+            <span class="badge badge-blue">LinkedIn Newsletter</span>
+          </div>
+          <div class="card-body">
+            <div class="chart-container" style="height:210px">
+              <canvas id="chart-li-nl-growth"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Impressions &amp; Opens — Recent Issues</div>
+          </div>
+          <div class="card-body">
+            <div class="chart-container" style="height:210px">
+              <canvas id="chart-li-nl-performance"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Issue Performance</div>
+          <span class="badge badge-gray">All Issues</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>#</th><th>Title</th><th>Date</th><th>Subscribers at Send</th><th>Impressions</th><th>Open Rate</th><th>Reactions</th><th>Comments</th></tr>
+            </thead>
+            <tbody id="table-li-nl-issues"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         YOUTUBE
+    ═══════════════════════════════════════ -->
+    <div id="section-youtube" class="section">
+      <div class="section-header">
+        <h2>YouTube</h2>
+        <div class="date-range-picker" data-section="youtube">
+          <button class="active" data-days="30">30 Days</button>
+          <button data-days="7">7 Days</button>
+          <button data-days="90">90 Days</button>
+        </div>
+      </div>
+
+      <div class="kpi-grid" style="grid-template-columns: repeat(5, 1fr);">
+        <div class="kpi-card purple">
+          <div class="kpi-label">Subscribers</div>
+          <div class="kpi-value">3,156</div>
+          <div class="kpi-trend up">↑ 142 this month</div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="kpi-label">Views This Month</div>
+          <div class="kpi-value">18,420</div>
+          <div class="kpi-trend up">↑ 21.3%</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">Watch Time (hrs)</div>
+          <div class="kpi-value">1,247</div>
+          <div class="kpi-trend up">↑ 18.9%</div>
+        </div>
+        <div class="kpi-card amber">
+          <div class="kpi-label">Avg View Duration</div>
+          <div class="kpi-value">4:04</div>
+          <div class="kpi-trend up">↑ 0:22</div>
+        </div>
+        <div class="kpi-card teal">
+          <div class="kpi-label">Videos Published</div>
+          <div class="kpi-value">8</div>
+          <div class="kpi-trend neutral">This month</div>
+        </div>
+      </div>
+
+      <div class="grid-2 mb-5">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Subscriber Growth</div>
+          </div>
+          <div class="card-body">
+            <div class="chart-container" style="height:210px">
+              <canvas id="chart-yt-subs"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Monthly Views Trend</div>
+          </div>
+          <div class="card-body">
+            <div class="chart-container" style="height:210px">
+              <canvas id="chart-yt-views"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Top Videos</div>
+          <span class="badge badge-gray">All Time</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>#</th><th>Title</th><th>Published</th><th>Views</th><th>Likes</th><th>Comments</th><th>Avg Duration</th><th>Retention</th></tr>
+            </thead>
+            <tbody id="table-yt-videos"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         PUBLICATIONS
+    ═══════════════════════════════════════ -->
+    <div id="section-publications" class="section">
+      <div class="section-header">
+        <h2>Issuu Publications</h2>
+        <div class="date-range-picker" data-section="publications">
+          <button class="active" data-days="30">30 Days</button>
+          <button data-days="7">7 Days</button>
+          <button data-days="90">90 Days</button>
+        </div>
+      </div>
+
+      <div class="kpi-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 24px;">
+        <div class="kpi-card blue">
+          <div class="kpi-label">Total Publications</div>
+          <div class="kpi-value">48</div>
+          <div class="kpi-trend neutral">Since 2019</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">Total Reads (Issuu)</div>
+          <div class="kpi-value">142,380</div>
+          <div class="kpi-trend up">↑ 9.4% YoY</div>
+        </div>
+        <div class="kpi-card amber">
+          <div class="kpi-label">Email Reach (Total)</div>
+          <div class="kpi-value">218,640</div>
+          <div class="kpi-trend up">↑ 14.2% YoY</div>
+        </div>
+        <div class="kpi-card purple">
+          <div class="kpi-label">Avg Reads/Publication</div>
+          <div class="kpi-value">2,966</div>
+          <div class="kpi-trend up">↑ 7.1% YoY</div>
+        </div>
+      </div>
+
+      <div class="card mb-5">
+        <div class="card-header">
+          <div class="card-title">Monthly Publication Reach</div>
+        </div>
+        <div class="card-body">
+          <div class="chart-container" style="height:220px">
+            <canvas id="chart-pub-reach"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">All Publications</div>
+          <span class="badge badge-gray">48 items</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Title</th><th>Type</th><th>Date</th><th>Reads (Issuu)</th><th>Email Reach</th><th>Status</th></tr>
+            </thead>
+            <tbody id="table-publications"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- Config Panel Overlay -->
+<div id="overlay"></div>
+
+<!-- Config Panel -->
+<div id="config-panel">
+  <div class="config-header">
+    <span style="font-size:20px">⚙️</span>
+    <h3>Settings &amp; API Config</h3>
+    <button class="btn btn-ghost" id="config-close">✕</button>
+  </div>
+  <div class="config-body">
+    <div class="config-section">
+      <div class="config-section-title">Matomo — nlfoodpartnership.com</div>
+      <div class="form-group">
+        <label>Matomo URL</label>
+        <input type="text" id="cfg-matomo-url-1" placeholder="https://analytics.yourdomain.com">
+      </div>
+      <div class="form-group">
+        <label>Site ID</label>
+        <input type="number" id="cfg-matomo-site-1" placeholder="1">
+      </div>
+      <div class="form-group">
+        <label>Auth Token</label>
+        <input type="password" id="cfg-matomo-token-1" placeholder="your_token_here">
+      </div>
+    </div>
+
+    <div class="config-section">
+      <div class="config-section-title">Matomo — nfpconnects.com</div>
+      <div class="form-group">
+        <label>Matomo URL</label>
+        <input type="text" id="cfg-matomo-url-2" placeholder="https://analytics.yourdomain.com">
+      </div>
+      <div class="form-group">
+        <label>Site ID</label>
+        <input type="number" id="cfg-matomo-site-2" placeholder="2">
+      </div>
+      <div class="form-group">
+        <label>Auth Token</label>
+        <input type="password" id="cfg-matomo-token-2" placeholder="your_token_here">
+      </div>
+    </div>
+
+    <div class="config-section">
+      <div class="config-section-title">Social Media</div>
+      <div class="form-group">
+        <label>LinkedIn Page URL or Page ID</label>
+        <input type="text" id="cfg-linkedin" placeholder="e.g. nlfoodpartnership">
+      </div>
+      <div class="form-group">
+        <label>Twitter/X Handle</label>
+        <input type="text" id="cfg-twitter" placeholder="@handle">
+      </div>
+      <div class="form-group">
+        <label>Instagram Handle</label>
+        <input type="text" id="cfg-instagram" placeholder="@handle">
+      </div>
+      <div class="form-group">
+        <label>Facebook Page ID / URL</label>
+        <input type="text" id="cfg-facebook" placeholder="page-name">
+      </div>
+    </div>
+
+    <div class="config-section">
+      <div class="config-section-title">YouTube</div>
+      <div class="form-group">
+        <label>YouTube Channel ID</label>
+        <input type="text" id="cfg-yt-channel" placeholder="UCxxxxxxxxxxxxxxxx">
+      </div>
+      <div class="form-group">
+        <label>YouTube API Key</label>
+        <input type="password" id="cfg-yt-key" placeholder="AIza...">
+      </div>
+    </div>
+
+    <div class="config-section">
+      <div class="config-section-title">Newsletter (Flodesk)</div>
+      <div class="form-group">
+        <label>Flodesk API Key</label>
+        <input type="password" id="cfg-nl-key" placeholder="Flodesk API key">
+      </div>
+      <div class="form-group">
+        <label>Segment / Audience ID (optional)</label>
+        <input type="text" id="cfg-nl-list" placeholder="segment ID">
+      </div>
+    </div>
+
+    <div class="config-section">
+      <div class="config-section-title">Issuu Publications</div>
+      <div class="form-group">
+        <label>Issuu Username / Publisher ID</label>
+        <input type="text" id="cfg-issuu-user" placeholder="your-issuu-username">
+      </div>
+      <div class="form-group">
+        <label>Issuu API Token</label>
+        <input type="password" id="cfg-issuu-token" placeholder="Issuu API token">
+      </div>
+    </div>
+
+    <div class="config-section">
+      <div class="config-section-title">LinkedIn Newsletter</div>
+      <div class="form-group">
+        <label>LinkedIn Newsletter URL / ID</label>
+        <input type="text" id="cfg-li-newsletter" placeholder="e.g. newsletter/nfp-monthly-7123456789">
+      </div>
+      <p class="text-sm text-muted" style="margin-top:4px">LinkedIn newsletter analytics are available via LinkedIn Page Admin export. Enter data manually or via LinkedIn API.</p>
+    </div>
+
+    <div class="config-section">
+      <div class="config-section-title">Dashboard</div>
+      <div class="form-group">
+        <label>Organization Name</label>
+        <input type="text" id="cfg-org-name" placeholder="NL Food Partnership">
+      </div>
+      <div class="form-group">
+        <label>Auto-refresh interval (minutes, 0 = off)</label>
+        <input type="number" id="cfg-refresh-interval" placeholder="0" min="0">
+      </div>
+    </div>
+  </div>
+  <div class="config-footer">
+    <button class="btn btn-primary" id="config-save">Save &amp; Fetch Live Data</button>
+    <button class="btn btn-outline" id="config-close2">Cancel</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const fmt = n => n >= 1000000 ? (n/1000000).toFixed(1)+'M' : n >= 1000 ? (n/1000).toFixed(1)+'K' : String(n);
+const fmtN = n => n.toLocaleString();
+
+function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function jitter(base, pct) { return Math.round(base * (1 + (Math.random() * 2 - 1) * pct)); }
+
+function trend(base, weeks, growth = 0.02) {
+  return Array.from({length: weeks}, (_, i) =>
+    Math.max(0, Math.round(base * Math.pow(1 + growth, i) * (0.88 + Math.random() * 0.24)))
+  );
+}
+
+function last12Months() {
+  const months = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(d.toLocaleString('default', {month: 'short', year: '2-digit'}));
+  }
+  return months;
+}
+
+function last8Weeks() {
+  const weeks = [];
+  const now = new Date();
+  for (let i = 7; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i * 7);
+    weeks.push(`Week of ${d.toLocaleString('default', {month: 'short', day: 'numeric'})}`);
+  }
+  return weeks;
+}
+
+const CHART_DEFAULTS = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { labels: { font: { size: 12 }, color: '#64748B', boxWidth: 12 } },
+    tooltip: {
+      backgroundColor: '#1E293B',
+      titleColor: '#F1F5F9',
+      bodyColor: '#CBD5E1',
+      padding: 10,
+      cornerRadius: 8,
+    }
+  },
+  scales: {
+    x: {
+      grid: { color: 'rgba(0,0,0,0.04)' },
+      ticks: { color: '#94A3B8', font: { size: 11 } }
+    },
+    y: {
+      grid: { color: 'rgba(0,0,0,0.04)' },
+      ticks: { color: '#94A3B8', font: { size: 11 } }
+    }
+  }
+};
+
+function lineChart(canvasId, labels, datasets) {
+  const canvas = $(canvasId);
+  if (!canvas) return null;
+  return new Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      ...CHART_DEFAULTS,
+      plugins: { ...CHART_DEFAULTS.plugins },
+      scales: { ...CHART_DEFAULTS.scales }
+    }
+  });
+}
+
+function barChart(canvasId, labels, datasets) {
+  const canvas = $(canvasId);
+  if (!canvas) return null;
+  return new Chart(canvas, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: { ...CHART_DEFAULTS }
+  });
+}
+
+function doughnutChart(canvasId, labels, data, colors) {
+  const canvas = $(canvasId);
+  if (!canvas) return null;
+  return new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { font: { size: 12 }, color: '#64748B', boxWidth: 12 } },
+        tooltip: CHART_DEFAULTS.plugins.tooltip
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+const charts = {};
+let config = {};
+
+function loadConfig() {
+  try { config = JSON.parse(localStorage.getItem('nfp_config') || '{}'); }
+  catch(e) { config = {}; }
+}
+
+function saveConfig() {
+  localStorage.setItem('nfp_config', JSON.stringify(config));
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DEMO DATA
+// ═══════════════════════════════════════════════════════════
+const WEEKS = last8Weeks();
+const MONTHS = last12Months();
+
+// ── Overview ──
+function initOverview() {
+  // Combined traffic
+  const nlfpW = trend(520, 8, 0.015);
+  const nfpcW = trend(380, 8, 0.022);
+  const combined = nlfpW.map((v,i) => v + nfpcW[i]);
+
+  if (charts.overviewTraffic) charts.overviewTraffic.destroy();
+  charts.overviewTraffic = lineChart('chart-overview-traffic', WEEKS, [{
+    label: 'nlfoodpartnership.com',
+    data: nlfpW,
+    borderColor: '#2563EB',
+    backgroundColor: 'rgba(37,99,235,0.08)',
+    fill: true,
+    tension: 0.4,
+    pointRadius: 3,
+    pointBackgroundColor: '#2563EB'
+  }, {
+    label: 'nfpconnects.com',
+    data: nfpcW,
+    borderColor: '#10B981',
+    backgroundColor: 'rgba(16,185,129,0.08)',
+    fill: true,
+    tension: 0.4,
+    pointRadius: 3,
+    pointBackgroundColor: '#10B981'
+  }]);
+
+  if (charts.overviewChannels) charts.overviewChannels.destroy();
+  charts.overviewChannels = doughnutChart('chart-overview-channels',
+    ['Organic Search', 'Direct', 'Social', 'Email', 'Referral', 'Other'],
+    [38, 24, 18, 12, 5, 3],
+    ['#2563EB', '#10B981', '#F59E0B', '#8B5CF6', '#14B8A6', '#94A3B8']
+  );
+
+  // Activity table
+  const tb = $('overview-activity-table');
+  if (!tb) return;
+  const activities = [
+    ['Newsletter Issue #24 sent', '📧 Newsletter', '6,842 delivered', '+187 subs', 'Today'],
+    ['nlfoodpartnership.com traffic spike', '🌐 Website', '1,842 visitors', '+31.4%', 'Yesterday'],
+    ['LinkedIn post — Food Security Report', '💼 LinkedIn', '4,210 impressions', '+82 followers', '2 days ago'],
+    ['YouTube video published', '▶️ YouTube', '1,280 views in 24hr', '+28 subs', '3 days ago'],
+    ['Publication: Spring 2025 Report', '📄 Publication', '842 downloads', '6,200 email reach', '4 days ago'],
+    ['nfpconnects.com new session record', '🌐 Website', '2,140 sessions/day', '+44.2%', '5 days ago'],
+    ['Instagram post — Community Garden', '📷 Instagram', '3,800 reach', '+12 followers', '6 days ago'],
+  ];
+  tb.innerHTML = activities.map(([event, channel, value, change, date]) => `
+    <tr>
+      <td class="table-primary">${event}</td>
+      <td>${channel}</td>
+      <td>${value}</td>
+      <td class="text-success">${change}</td>
+      <td class="text-muted text-sm">${date}</td>
+    </tr>
+  `).join('');
+}
+
+// ── Websites ──
+function initWebsites() {
+  // NLFP trend
+  const nlfpWeekly = trend(480, 8, 0.014);
+  if (charts.nlfpTrend) charts.nlfpTrend.destroy();
+  charts.nlfpTrend = lineChart('chart-nlfp-trend', WEEKS, [{
+    label: 'Visitors',
+    data: nlfpWeekly,
+    borderColor: '#2563EB',
+    backgroundColor: 'rgba(37,99,235,0.08)',
+    fill: true,
+    tension: 0.4,
+    pointRadius: 3,
+    pointBackgroundColor: '#2563EB'
+  }]);
+
+  if (charts.nlfpSources) charts.nlfpSources.destroy();
+  charts.nlfpSources = doughnutChart('chart-nlfp-sources',
+    ['Organic', 'Direct', 'Social', 'Email', 'Referral'],
+    [42, 22, 20, 11, 5],
+    ['#2563EB', '#10B981', '#F59E0B', '#8B5CF6', '#94A3B8']
+  );
+
+  // NFPC trend
+  const nfpcWeekly = trend(360, 8, 0.021);
+  if (charts.nfpcTrend) charts.nfpcTrend.destroy();
+  charts.nfpcTrend = lineChart('chart-nfpc-trend', WEEKS, [{
+    label: 'Visitors',
+    data: nfpcWeekly,
+    borderColor: '#10B981',
+    backgroundColor: 'rgba(16,185,129,0.08)',
+    fill: true,
+    tension: 0.4,
+    pointRadius: 3,
+    pointBackgroundColor: '#10B981'
+  }]);
+
+  if (charts.nfpcSources) charts.nfpcSources.destroy();
+  charts.nfpcSources = doughnutChart('chart-nfpc-sources',
+    ['Organic', 'Direct', 'Social', 'Email', 'Referral'],
+    [36, 26, 22, 10, 6],
+    ['#10B981', '#2563EB', '#F59E0B', '#8B5CF6', '#94A3B8']
+  );
+
+  // NLFP pages table
+  const nlfpPages = [
+    ['/home', 8420, 6840, '2:14', '38.2%'],
+    ['/about', 3180, 2710, '3:41', '28.4%'],
+    ['/food-security-report', 2840, 2390, '5:02', '19.7%'],
+    ['/programs', 2240, 1920, '3:18', '34.1%'],
+    ['/partnerships', 1820, 1540, '4:27', '22.8%'],
+    ['/news', 1640, 1280, '2:48', '41.3%'],
+    ['/contact', 980, 840, '1:52', '55.6%'],
+    ['/resources/toolkits', 870, 740, '6:14', '15.2%'],
+  ];
+  $('table-nlfp-pages').innerHTML = nlfpPages.map(([page, pv, uv, time, bounce]) => `
+    <tr>
+      <td class="table-primary font-mono">${page}</td>
+      <td>${fmtN(pv)}</td>
+      <td>${fmtN(uv)}</td>
+      <td>${time}</td>
+      <td>${bounce}</td>
+      <td><span class="text-success">↑</span></td>
+    </tr>
+  `).join('');
+
+  // NFPC pages table
+  const nfpcPages = [
+    ['/home', 5840, 4820, '2:38', '36.4%'],
+    ['/connect', 2980, 2540, '4:12', '24.1%'],
+    ['/directory', 2460, 2100, '5:44', '18.3%'],
+    ['/events', 2120, 1880, '3:22', '31.7%'],
+    ['/resources', 1740, 1480, '4:58', '21.4%'],
+    ['/blog', 1520, 1260, '3:08', '38.9%'],
+    ['/join', 1140, 980, '2:16', '44.2%'],
+    ['/community-map', 840, 710, '7:31', '12.8%'],
+  ];
+  $('table-nfpc-pages').innerHTML = nfpcPages.map(([page, pv, uv, time, bounce]) => `
+    <tr>
+      <td class="table-primary font-mono">${page}</td>
+      <td>${fmtN(pv)}</td>
+      <td>${fmtN(uv)}</td>
+      <td>${time}</td>
+      <td>${bounce}</td>
+      <td><span class="text-success">↑</span></td>
+    </tr>
+  `).join('');
+}
+
+// ── Social ──
+function initSocial() {
+  const platforms = [
+    {
+      id: 'linkedin', name: 'LinkedIn', handle: 'NL Food Partnership',
+      icon: '💼', color: '#0A66C2', bg: '#DBEAFE',
+      followers: 8420, fTrend: '+124', posts: 14, reach: 42180, engRate: '4.8%',
+      data: trend(8100, 8, 0.005)
+    },
+    {
+      id: 'twitter', name: 'Twitter / X', handle: '@NLFoodPartner',
+      icon: '🐦', color: '#1DA1F2', bg: '#E0F2FE',
+      followers: 4840, fTrend: '+38', posts: 28, reach: 18640, engRate: '2.3%',
+      data: trend(4720, 8, 0.003)
+    },
+    {
+      id: 'instagram', name: 'Instagram', handle: '@nlfoodpartnership',
+      icon: '📷', color: '#E1306C', bg: '#FCE7F3',
+      followers: 3280, fTrend: '+84', posts: 18, reach: 24810, engRate: '6.1%',
+      data: trend(3100, 8, 0.007)
+    },
+    {
+      id: 'facebook', name: 'Facebook', handle: 'NL Food Partnership',
+      icon: '👥', color: '#1877F2', bg: '#DBEAFE',
+      followers: 1700, fTrend: '+22', posts: 12, reach: 9240, engRate: '1.8%',
+      data: trend(1640, 8, 0.002)
+    }
+  ];
+
+  const grid = $('social-cards-grid');
+  grid.innerHTML = platforms.map(p => `
+    <div class="social-card">
+      <div class="social-card-header">
+        <div class="social-icon" style="background:${p.bg}; color:${p.color}; font-size:20px;">${p.icon}</div>
+        <div>
+          <div class="social-name" style="color:${p.color}">${p.name}</div>
+          <div class="social-handle">${p.handle}</div>
+        </div>
+      </div>
+      <div class="social-stats">
+        <div>
+          <div class="social-stat-label">Followers</div>
+          <div class="social-stat-value">${fmtN(p.followers)}</div>
+          <div class="social-stat-trend text-success">+${p.fTrend} this month</div>
+        </div>
+        <div>
+          <div class="social-stat-label">Posts</div>
+          <div class="social-stat-value">${p.posts}</div>
+          <div class="social-stat-trend text-muted">This month</div>
+        </div>
+        <div>
+          <div class="social-stat-label">Reach</div>
+          <div class="social-stat-value">${fmt(p.reach)}</div>
+          <div class="social-stat-trend text-muted">Impressions</div>
+        </div>
+        <div>
+          <div class="social-stat-label">Eng. Rate</div>
+          <div class="social-stat-value" style="color:${p.color}">${p.engRate}</div>
+          <div class="social-stat-trend text-muted">This month</div>
+        </div>
+      </div>
+      <div class="sparkline-wrap">
+        <canvas id="spark-${p.id}" height="40"></canvas>
+      </div>
+    </div>
+  `).join('');
+
+  // Draw sparklines
+  platforms.forEach(p => {
+    const canvas = $(`spark-${p.id}`);
+    if (!canvas) return;
+    new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: WEEKS,
+        datasets: [{
+          data: p.data,
+          borderColor: p.color,
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { display: false },
+          y: { display: false }
+        },
+        elements: { line: { borderCapStyle: 'round' } }
+      }
+    });
+  });
+
+  // Follower growth chart
+  if (charts.socialGrowth) charts.socialGrowth.destroy();
+  charts.socialGrowth = lineChart('chart-social-growth', MONTHS, [
+    {
+      label: 'LinkedIn',
+      data: trend(7800, 12, 0.005),
+      borderColor: '#0A66C2',
+      backgroundColor: 'transparent',
+      tension: 0.4, pointRadius: 2, borderWidth: 2
+    },
+    {
+      label: 'Instagram',
+      data: trend(2900, 12, 0.008),
+      borderColor: '#E1306C',
+      backgroundColor: 'transparent',
+      tension: 0.4, pointRadius: 2, borderWidth: 2
+    },
+    {
+      label: 'Twitter/X',
+      data: trend(4600, 12, 0.003),
+      borderColor: '#1DA1F2',
+      backgroundColor: 'transparent',
+      tension: 0.4, pointRadius: 2, borderWidth: 2
+    },
+    {
+      label: 'Facebook',
+      data: trend(1560, 12, 0.002),
+      borderColor: '#1877F2',
+      backgroundColor: 'transparent',
+      tension: 0.4, pointRadius: 2, borderWidth: 2
+    }
+  ]);
+
+  // Engagement bar chart
+  if (charts.socialEngagement) charts.socialEngagement.destroy();
+  charts.socialEngagement = barChart('chart-social-engagement',
+    ['LinkedIn', 'Twitter/X', 'Instagram', 'Facebook'],
+    [{
+      label: 'Engagement Rate %',
+      data: [4.8, 2.3, 6.1, 1.8],
+      backgroundColor: ['#0A66C2', '#1DA1F2', '#E1306C', '#1877F2'],
+      borderRadius: 6
+    }]
+  );
+
+  // Top posts table
+  const posts = [
+    ['💼 LinkedIn', '"Food Security in NL: 2025 Report launch"', 'May 28', '12,840', '1,420', '11.1%'],
+    ['📷 Instagram', '"Behind the scenes at the Community Garden Harvest"', 'May 24', '8,210', '842', '10.3%'],
+    ['💼 LinkedIn', '"Celebrating 5 years of the Food Partnership Network"', 'May 18', '7,480', '680', '9.1%'],
+    ['🐦 Twitter', '"🧵 Thread: 5 ways food banks are adapting in 2025"', 'May 15', '6,240', '424', '6.8%'],
+    ['📷 Instagram', '"Meet our partner: @StJohnsHarvest"', 'May 10', '5,820', '612', '10.5%'],
+    ['👥 Facebook', '"Community Kitchen open day — all welcome!"', 'May 8', '4,180', '312', '7.5%'],
+  ];
+  $('table-social-posts').innerHTML = posts.map(([platform, preview, date, reach, eng, rate]) => `
+    <tr>
+      <td>${platform}</td>
+      <td class="table-primary" style="max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${preview}</td>
+      <td class="text-muted text-sm">${date}</td>
+      <td>${fmtN(parseInt(reach.replace(',', '')))}</td>
+      <td>${eng}</td>
+      <td><span class="badge badge-green">${rate}</span></td>
+    </tr>
+  `).join('');
+}
+
+// ── Newsletter ──
+function initNewsletter() {
+  const subData = trend(5800, 12, 0.013);
+  if (charts.nlGrowth) charts.nlGrowth.destroy();
+  charts.nlGrowth = lineChart('chart-newsletter-growth', MONTHS, [{
+    label: 'Subscribers',
+    data: subData,
+    borderColor: '#2563EB',
+    backgroundColor: 'rgba(37,99,235,0.08)',
+    fill: true,
+    tension: 0.4,
+    pointRadius: 3,
+    pointBackgroundColor: '#2563EB'
+  }]);
+
+  // Issues labels
+  const issueLabels = Array.from({length: 10}, (_, i) => `Issue ${14 + i}`);
+  const openRates = issueLabels.map(() => (28 + Math.random() * 12).toFixed(1));
+  const clickRates = issueLabels.map(() => (5 + Math.random() * 6).toFixed(1));
+
+  if (charts.nlRates) charts.nlRates.destroy();
+  charts.nlRates = barChart('chart-newsletter-rates', issueLabels, [
+    {
+      label: 'Open Rate %',
+      data: openRates,
+      backgroundColor: 'rgba(37,99,235,0.8)',
+      borderRadius: 4
+    },
+    {
+      label: 'Click Rate %',
+      data: clickRates,
+      backgroundColor: 'rgba(16,185,129,0.8)',
+      borderRadius: 4
+    }
+  ]);
+
+  // Issues table
+  const issues = [
+    ['#24', 'May 30, 2025', 'Food Security 2025: New Data Released', 6842, 2380, '34.8%', 568, '8.3%'],
+    ['#23', 'May 16, 2025', 'Community Gardens: Success Stories', 6790, 2210, '32.6%', 498, '7.3%'],
+    ['#22', 'May 2, 2025', 'NFP Annual Conference Recap', 6740, 2480, '36.8%', 614, '9.1%'],
+    ['#21', 'Apr 18, 2025', 'Volunteer Spotlight: St. John\'s Chapter', 6680, 2120, '31.7%', 448, '6.7%'],
+    ['#20', 'Apr 4, 2025', 'New Partnerships in Rural NL', 6620, 2310, '34.9%', 524, '7.9%'],
+    ['#19', 'Mar 21, 2025', 'Spring Programs Launch 2025', 6560, 2050, '31.2%', 412, '6.3%'],
+  ];
+  $('table-newsletter-issues').innerHTML = issues.map(([num, date, subject, delivered, opens, openR, clicks, clickR]) => `
+    <tr>
+      <td><span class="badge badge-gray">${num}</span></td>
+      <td class="text-muted text-sm">${date}</td>
+      <td class="table-primary">${subject}</td>
+      <td>${fmtN(delivered)}</td>
+      <td>${fmtN(opens)}</td>
+      <td><span class="badge badge-blue">${openR}</span></td>
+      <td>${fmtN(clicks)}</td>
+      <td><span class="badge badge-green">${clickR}</span></td>
+    </tr>
+  `).join('');
+
+  // Top links table
+  const links = [
+    ['Read Full Report', 'nlfoodpartnership.com/food-security-report', 412, 388, '17.3%'],
+    ['Register for Conference', 'nlfoodpartnership.com/conference-2025', 284, 261, '11.9%'],
+    ['Community Garden Map', 'nfpconnects.com/community-map', 218, 204, '9.2%'],
+    ['Volunteer Sign-up', 'nfpconnects.com/volunteer', 164, 158, '6.9%'],
+    ['Newsletter Archive', 'nlfoodpartnership.com/newsletter', 112, 108, '4.7%'],
+  ];
+  $('table-newsletter-links').innerHTML = links.map(([label, url, clicks, unique, pct]) => `
+    <tr>
+      <td class="table-primary">${label}</td>
+      <td class="table-mono text-muted">${url}</td>
+      <td>${clicks}</td>
+      <td>${unique}</td>
+      <td>
+        <div class="flex items-center gap-2">
+          <div class="progress-bar-wrap" style="min-width:80px">
+            <div class="progress-bar" style="width:${pct}"></div>
+          </div>
+          <span class="text-sm text-muted">${pct}</span>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ── YouTube ──
+function initYouTube() {
+  const subData = trend(2600, 12, 0.015);
+  if (charts.ytSubs) charts.ytSubs.destroy();
+  charts.ytSubs = lineChart('chart-yt-subs', MONTHS, [{
+    label: 'Subscribers',
+    data: subData,
+    borderColor: '#8B5CF6',
+    backgroundColor: 'rgba(139,92,246,0.08)',
+    fill: true,
+    tension: 0.4,
+    pointRadius: 3,
+    pointBackgroundColor: '#8B5CF6'
+  }]);
+
+  const viewsData = trend(12000, 12, 0.02);
+  if (charts.ytViews) charts.ytViews.destroy();
+  charts.ytViews = barChart('chart-yt-views', MONTHS, [{
+    label: 'Monthly Views',
+    data: viewsData,
+    backgroundColor: 'rgba(37,99,235,0.8)',
+    borderRadius: 4
+  }]);
+
+  const videos = [
+    ['Food Security in NL: 2025 Annual Report', 'May 28, 2025', 4820, 312, 48, '8:24', '64%'],
+    ['Community Kitchens: Transforming Lives', 'May 14, 2025', 3640, 248, 37, '6:42', '71%'],
+    ['NFP Conference 2025 Highlights', 'May 3, 2025', 2980, 186, 29, '12:14', '52%'],
+    ['Volunteer Stories: Meet Our Community', 'Apr 18, 2025', 2240, 168, 24, '7:38', '68%'],
+    ['Rural Food Access: Challenges & Solutions', 'Apr 5, 2025', 1840, 124, 18, '9:02', '59%'],
+    ['Partnership Spotlight: St. John\'s Harvest', 'Mar 22, 2025', 1620, 112, 14, '5:48', '73%'],
+    ['Annual Gala 2024 Recap', 'Dec 12, 2024', 8420, 520, 84, '14:22', '48%'],
+    ['Food Bank Innovation: 2024 Report', 'Nov 8, 2024', 6840, 414, 62, '10:18', '55%'],
+  ];
+  $('table-yt-videos').innerHTML = videos.map(([title, date, views, likes, comments, dur, ret], i) => `
+    <tr>
+      <td class="text-muted text-sm">${i + 1}</td>
+      <td class="table-primary" style="max-width:260px">${title}</td>
+      <td class="text-muted text-sm">${date}</td>
+      <td>${fmtN(views)}</td>
+      <td>${likes}</td>
+      <td>${comments}</td>
+      <td>${dur}</td>
+      <td>
+        <div class="flex items-center gap-2">
+          <div class="progress-bar-wrap" style="min-width:60px">
+            <div class="progress-bar" style="width:${ret}; background: #8B5CF6"></div>
+          </div>
+          <span class="text-sm">${ret}</span>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ── LinkedIn Newsletter ──
+function initLinkedInNewsletter() {
+  const subData = trend(2400, 12, 0.022);
+  if (charts.liNlGrowth) charts.liNlGrowth.destroy();
+  charts.liNlGrowth = lineChart('chart-li-nl-growth', MONTHS, [{
+    label: 'Subscribers',
+    data: subData,
+    borderColor: '#0A66C2',
+    backgroundColor: 'rgba(10,102,194,0.08)',
+    fill: true,
+    tension: 0.4,
+    pointRadius: 3,
+    pointBackgroundColor: '#0A66C2'
+  }]);
+
+  const issueLabels = Array.from({length: 8}, (_, i) => `Issue ${11 + i}`);
+  const impressions = issueLabels.map(() => randomInt(6000, 12000));
+  const opens = impressions.map(v => Math.round(v * (0.38 + Math.random() * 0.08)));
+
+  if (charts.liNlPerf) charts.liNlPerf.destroy();
+  charts.liNlPerf = barChart('chart-li-nl-performance', issueLabels, [
+    { label: 'Impressions', data: impressions, backgroundColor: 'rgba(10,102,194,0.75)', borderRadius: 4 },
+    { label: 'Opens', data: opens, backgroundColor: 'rgba(16,185,129,0.75)', borderRadius: 4 }
+  ]);
+
+  const issues = [
+    ['#18', 'Food Security in NL: June Edition', 'May 30, 2025', 3284, 11240, '41.8%', 148, 24],
+    ['#17', 'Spotlight: Community Kitchen Networks', 'Apr 28, 2025', 3070, 9840, '39.4%', 132, 18],
+    ['#16', 'NFP Conference 2025 Preview', 'Mar 31, 2025', 2890, 10420, '42.1%', 156, 31],
+    ['#15', 'Rural Food Access: New Data', 'Feb 28, 2025', 2740, 8980, '38.7%', 118, 14],
+    ['#14', 'Partnership Highlights Q1 2025', 'Jan 31, 2025', 2580, 8240, '37.2%', 104, 11],
+    ['#13', 'Year in Review: 2024', 'Dec 20, 2024', 2420, 9610, '43.6%', 172, 38],
+  ];
+  $('table-li-nl-issues').innerHTML = issues.map(([num, title, date, subs, impr, openRate, reactions, comments]) => `
+    <tr>
+      <td><span class="badge badge-blue">${num}</span></td>
+      <td class="table-primary" style="max-width:280px">${title}</td>
+      <td class="text-muted text-sm">${date}</td>
+      <td>${fmtN(subs)}</td>
+      <td>${fmtN(impr)}</td>
+      <td><span class="badge badge-green">${openRate}</span></td>
+      <td>${reactions}</td>
+      <td>${comments}</td>
+    </tr>
+  `).join('');
+}
+
+// ── Publications ──
+function initPublications() {
+  // Bar chart
+  const reachData = MONTHS.map(() => randomInt(8000, 22000));
+  const downloadData = MONTHS.map(() => randomInt(1200, 4800));
+  if (charts.pubReach) charts.pubReach.destroy();
+  charts.pubReach = barChart('chart-pub-reach', MONTHS, [
+    {
+      label: 'Email Reach',
+      data: reachData,
+      backgroundColor: 'rgba(37,99,235,0.75)',
+      borderRadius: 4
+    },
+    {
+      label: 'Downloads/Views',
+      data: downloadData,
+      backgroundColor: 'rgba(16,185,129,0.75)',
+      borderRadius: 4
+    }
+  ]);
+
+  const publications = [
+    ['Food Security in NL: 2025 Annual Report', 'Annual Report', 'May 2025', 4820, 12840, 'Published'],
+    ['Community Kitchen Toolkit — 3rd Ed.', 'Toolkit', 'Apr 2025', 3640, 6200, 'Published'],
+    ['Rural Food Access Assessment 2025', 'Research', 'Mar 2025', 2980, 9840, 'Published'],
+    ['NFP Conference 2025 Proceedings', 'Conference', 'Feb 2025', 2240, 7420, 'Published'],
+    ['Food Bank Network Review Q4 2024', 'Report', 'Jan 2025', 1840, 6140, 'Published'],
+    ['Volunteer Program Guide — 2024', 'Guide', 'Dec 2024', 1620, 5280, 'Published'],
+    ['Food Security Policy Brief #12', 'Policy Brief', 'Nov 2024', 1480, 8420, 'Published'],
+    ['Community Garden Best Practices', 'Toolkit', 'Oct 2024', 1340, 4820, 'Published'],
+    ['Food Security in NL: 2024 Annual Report', 'Annual Report', 'May 2024', 7840, 18640, 'Published'],
+    ['Rural Hunger Data Report 2024', 'Research', 'Mar 2024', 3120, 11240, 'Published'],
+    ['NFP Conference 2024 Proceedings', 'Conference', 'Feb 2024', 2480, 8240, 'Published'],
+    ['Food Policy Brief #11', 'Policy Brief', 'Nov 2023', 1280, 7140, 'Published'],
+  ];
+
+  const typeColors = {
+    'Annual Report': 'badge-blue',
+    'Toolkit': 'badge-green',
+    'Research': 'badge-amber',
+    'Conference': 'badge-gray',
+    'Report': 'badge-gray',
+    'Guide': 'badge-green',
+    'Policy Brief': 'badge-amber',
+  };
+
+  $('table-publications').innerHTML = publications.map(([title, type, date, downloads, emailReach, status]) => `
+    <tr>
+      <td class="table-primary">${title}</td>
+      <td><span class="badge ${typeColors[type] || 'badge-gray'}">${type}</span></td>
+      <td class="text-muted text-sm">${date}</td>
+      <td>${fmtN(downloads)}</td>
+      <td>${fmtN(emailReach)}</td>
+      <td><span class="badge badge-green">${status}</span></td>
+    </tr>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════════
+let currentSection = 'overview';
+const sectionTitles = {
+  overview: 'Overview',
+  websites: 'Websites',
+  social: 'Social Media',
+  newsletter: 'Newsletter',
+  'linkedin-newsletter': 'LinkedIn Newsletter',
+  youtube: 'YouTube',
+  publications: 'Issuu Publications'
+};
+
+const sectionInitMap = {
+  overview: initOverview,
+  websites: initWebsites,
+  social: initSocial,
+  newsletter: initNewsletter,
+  'linkedin-newsletter': initLinkedInNewsletter,
+  youtube: initYouTube,
+  publications: initPublications
+};
+
+const initializedSections = new Set();
+
+function navigateTo(section) {
+  // Update sidebar
+  document.querySelectorAll('.nav-item[data-section]').forEach(el => {
+    el.classList.toggle('active', el.dataset.section === section);
+  });
+
+  // Update content sections
+  document.querySelectorAll('.section').forEach(el => {
+    el.classList.toggle('active', el.id === `section-${section}`);
+  });
+
+  // Update header title
+  $('page-title').textContent = sectionTitles[section] || section;
+
+  currentSection = section;
+
+  // Initialize if needed
+  if (!initializedSections.has(section)) {
+    initializedSections.add(section);
+    if (sectionInitMap[section]) sectionInitMap[section]();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════════
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tabId = btn.dataset.tab;
+    const parent = btn.closest('.section');
+    parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    parent.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    $(`tab-${tabId}`).classList.add('active');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+//  DATE RANGE PICKERS
+// ═══════════════════════════════════════════════════════════
+document.querySelectorAll('.date-range-picker button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const picker = btn.closest('.date-range-picker');
+    picker.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Re-initialize the current section with new range
+    const days = parseInt(btn.dataset.days);
+    // In a real app: re-fetch with date range. For demo, just re-init.
+    const section = picker.closest('.section');
+    if (section) {
+      const sectionId = section.id.replace('section-', '');
+      if (sectionInitMap[sectionId]) {
+        sectionInitMap[sectionId]();
+      }
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+//  CONFIG PANEL
+// ═══════════════════════════════════════════════════════════
+function openConfig() {
+  $('config-panel').classList.add('open');
+  $('overlay').classList.add('open');
+  // Load saved values
+  const fields = [
+    'cfg-matomo-url-1', 'cfg-matomo-site-1', 'cfg-matomo-token-1',
+    'cfg-matomo-url-2', 'cfg-matomo-site-2', 'cfg-matomo-token-2',
+    'cfg-linkedin', 'cfg-twitter', 'cfg-instagram', 'cfg-facebook',
+    'cfg-yt-channel', 'cfg-yt-key',
+    'cfg-nl-key', 'cfg-nl-list',
+    'cfg-issuu-user', 'cfg-issuu-token',
+    'cfg-li-newsletter',
+    'cfg-org-name', 'cfg-refresh-interval'
+  ];
+  fields.forEach(id => {
+    const el = $(id);
+    const key = id.replace('cfg-', '').replace(/-/g, '_');
+    if (el && config[key]) el.value = config[key];
+  });
+}
+
+function closeConfig() {
+  $('config-panel').classList.remove('open');
+  $('overlay').classList.remove('open');
+}
+
+function saveSettings() {
+  const fields = {
+    'cfg-matomo-url-1': 'matomo_url_1',
+    'cfg-matomo-site-1': 'matomo_site_1',
+    'cfg-matomo-token-1': 'matomo_token_1',
+    'cfg-matomo-url-2': 'matomo_url_2',
+    'cfg-matomo-site-2': 'matomo_site_2',
+    'cfg-matomo-token-2': 'matomo_token_2',
+    'cfg-linkedin': 'linkedin',
+    'cfg-twitter': 'twitter',
+    'cfg-instagram': 'instagram',
+    'cfg-facebook': 'facebook',
+    'cfg-yt-channel': 'yt_channel',
+    'cfg-yt-key': 'yt_key',
+    'cfg-nl-key': 'nl_key',
+    'cfg-nl-list': 'nl_list',
+    'cfg-issuu-user': 'issuu_user',
+    'cfg-issuu-token': 'issuu_token',
+    'cfg-li-newsletter': 'li_newsletter',
+    'cfg-org-name': 'org_name',
+    'cfg-refresh-interval': 'refresh_interval'
+  };
+  Object.entries(fields).forEach(([id, key]) => {
+    const el = $(id);
+    if (el && el.value) config[key] = el.value;
+  });
+  saveConfig();
+  closeConfig();
+
+  // If Matomo credentials present, try to fetch
+  if (config.matomo_url_1 && config.matomo_token_1 && config.matomo_site_1) {
+    fetchMatomoData(1);
+  }
+  if (config.matomo_url_2 && config.matomo_token_2 && config.matomo_site_2) {
+    fetchMatomoData(2);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MATOMO API
+// ═══════════════════════════════════════════════════════════
+async function fetchMatomoData(siteNum) {
+  const url = config[`matomo_url_${siteNum}`];
+  const siteId = config[`matomo_site_${siteNum}`];
+  const token = config[`matomo_token_${siteNum}`];
+  if (!url || !siteId || !token) return;
+
+  const base = `${url.replace(/\/$/, '')}/index.php`;
+  const params = new URLSearchParams({
+    module: 'API',
+    method: 'VisitsSummary.get',
+    idSite: siteId,
+    period: 'month',
+    date: 'last1',
+    format: 'JSON',
+    token_auth: token,
+    filter_limit: '100'
+  });
+
+  try {
+    const res = await fetch(`${base}?${params}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    console.log(`Matomo site ${siteNum} data:`, data);
+    // Update KPIs with live data
+    if (data && data.nb_uniq_visitors) {
+      // Merge live data – update relevant KPI fields
+      alert(`✅ Live Matomo data loaded for site ${siteNum}! Visitors: ${fmtN(data.nb_uniq_visitors)}`);
+    }
+  } catch(err) {
+    console.warn('Matomo fetch failed:', err);
+    alert(`⚠️ Could not connect to Matomo (site ${siteNum}). Check your URL and token.\n\n${err.message}`);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  REFRESH
+// ═══════════════════════════════════════════════════════════
+function refreshData() {
+  const icon = $('refresh-icon');
+  icon.classList.add('spinning');
+  // Re-init all cached sections
+  initializedSections.forEach(section => {
+    if (sectionInitMap[section]) sectionInitMap[section]();
+  });
+  setTimeout(() => icon.classList.remove('spinning'), 800);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EVENT LISTENERS
+// ═══════════════════════════════════════════════════════════
+document.querySelectorAll('.nav-item[data-section]').forEach(el => {
+  el.addEventListener('click', () => navigateTo(el.dataset.section));
+});
+
+$('settings-btn').addEventListener('click', openConfig);
+$('settings-btn-header').addEventListener('click', openConfig);
+$('config-close').addEventListener('click', closeConfig);
+$('config-close2').addEventListener('click', closeConfig);
+$('config-save').addEventListener('click', saveSettings);
+$('overlay').addEventListener('click', closeConfig);
+$('refresh-btn').addEventListener('click', refreshData);
+
+// ═══════════════════════════════════════════════════════════
+//  HEADER DATE
+// ═══════════════════════════════════════════════════════════
+function updateDate() {
+  const now = new Date();
+  $('current-date').textContent = now.toLocaleDateString('en-CA', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  AUTH + SERVER INTEGRATION
+// ═══════════════════════════════════════════════════════════
+const API_BASE = ''; // relative URLs — same origin on Vercel
+let authToken = sessionStorage.getItem('nfp_auth_token') || '';
+
+function showLoginOverlay() {
+  const overlay = $('login-overlay');
+  if (overlay) overlay.style.display = 'flex';
+}
+
+function hideLoginOverlay() {
+  const overlay = $('login-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+async function doLogin() {
+  const passwordEl = $('login-password');
+  const errorEl = $('login-error');
+  const password = passwordEl ? passwordEl.value : '';
+  if (!password) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    const data = await res.json();
+    if (data.ok && data.token) {
+      authToken = data.token;
+      sessionStorage.setItem('nfp_auth_token', authToken);
+      if (errorEl) errorEl.style.display = 'none';
+      hideLoginOverlay();
+      fetchLiveData();
+    } else {
+      if (errorEl) errorEl.style.display = 'block';
+      if (passwordEl) passwordEl.value = '';
+    }
+  } catch (_) {
+    if (errorEl) errorEl.style.display = 'block';
+  }
+}
+
+async function checkAuth() {
+  if (!authToken) {
+    showLoginOverlay();
+    return;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/api/status`, {
+      headers: { 'X-Dashboard-Token': authToken },
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!res.ok) throw new Error('Unauthorized');
+    const status = await res.json();
+
+    hideLoginOverlay();
+
+    const platforms = ['youtube', 'facebook', 'instagram', 'linkedin', 'flodesk'];
+    const liveCount = platforms.filter(p => status[p]).length;
+
+    const banner = $('demo-banner');
+    if (banner) {
+      banner.style.background = 'linear-gradient(90deg, #D1FAE5, #A7F3D0)';
+      banner.style.borderBottomColor = '#34D399';
+      banner.style.color = '#065F46';
+      banner.querySelector('.demo-badge').textContent = liveCount > 0 ? 'LIVE' : 'SERVER';
+      banner.querySelector('.demo-badge').style.background = '#10B981';
+      banner.querySelector('span:nth-child(2)').innerHTML =
+        liveCount > 0
+          ? `Connected — <strong>${liveCount} platform${liveCount > 1 ? 's' : ''} live</strong>. Live data loaded below.`
+          : 'Connected but no API credentials configured yet. Add them in Vercel environment variables.';
+    }
+
+    fetchLiveData();
+  } catch (_) {
+    authToken = '';
+    sessionStorage.removeItem('nfp_auth_token');
+    showLoginOverlay();
+  }
+}
+
+async function fetchLiveData() {
+  const authHeaders = { 'X-Dashboard-Token': authToken };
+
+  // ── YouTube ──────────────────────────────────────────────
+  try {
+    const [channelRes, videosRes] = await Promise.all([
+      fetch(`${API_BASE}/api/youtube?type=channel`, { headers: authHeaders }),
+      fetch(`${API_BASE}/api/youtube?type=videos`, { headers: authHeaders })
+    ]);
+    const channel = await channelRes.json();
+    const videosData = await videosRes.json();
+
+    if (channel.configured && !channel.error) {
+      // Overview KPI
+      const ytSubsEl = $('kpi-yt-subs');
+      if (ytSubsEl) ytSubsEl.textContent = fmt(channel.subscriberCount);
+
+      // YouTube section KPI card (first kpi-value in section-youtube)
+      const ytSection = $('section-youtube');
+      if (ytSection) {
+        const kpiValues = ytSection.querySelectorAll('.kpi-value');
+        if (kpiValues[0]) kpiValues[0].textContent = fmtN(channel.subscriberCount);
+        if (kpiValues[4]) kpiValues[4].textContent = fmtN(channel.videoCount);
+      }
+    }
+
+    if (videosData.configured && !videosData.error && videosData.videos && videosData.videos.length > 0) {
+      const tbody = $('table-yt-videos');
+      if (tbody) {
+        const isoToMSS = iso => {
+          const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+          if (!m) return iso;
+          const h = parseInt(m[1] || 0, 10);
+          const min = parseInt(m[2] || 0, 10) + h * 60;
+          const sec = parseInt(m[3] || 0, 10);
+          return `${min}:${String(sec).padStart(2, '0')}`;
+        };
+        tbody.innerHTML = videosData.videos.map((v, i) => `
+          <tr>
+            <td class="text-muted text-sm">${i + 1}</td>
+            <td class="table-primary" style="max-width:260px">
+              <a href="https://youtu.be/${v.id}" target="_blank" style="color:inherit;text-decoration:none">${v.title}</a>
+            </td>
+            <td class="text-muted text-sm">${new Date(v.publishedAt).toLocaleDateString('en-CA', {year:'numeric',month:'short',day:'numeric'})}</td>
+            <td>${fmtN(v.views)}</td>
+            <td>${fmtN(v.likes)}</td>
+            <td>${fmtN(v.comments)}</td>
+            <td>${isoToMSS(v.duration)}</td>
+            <td class="text-muted text-sm">—</td>
+          </tr>
+        `).join('');
+      }
+    }
+  } catch (err) { console.warn('[Live] YouTube:', err.message); }
+
+  // ── Facebook ─────────────────────────────────────────────
+  try {
+    const fbRes = await fetch(`${API_BASE}/api/facebook?type=page`, { headers: authHeaders });
+    const fb = await fbRes.json();
+    if (fb.configured && !fb.error) {
+      // Find Facebook social card in the social grid
+      const fbCard = document.querySelector('#social-cards-grid .social-card:nth-child(4)');
+      if (fbCard) {
+        const statValues = fbCard.querySelectorAll('.social-stat-value');
+        if (statValues[0]) statValues[0].textContent = fmtN(fb.followersCount || fb.fanCount || 0);
+        if (statValues[1]) statValues[1].textContent = fmtN(fb.postsThisMonth || 0);
+      }
+    }
+  } catch (err) { console.warn('[Live] Facebook:', err.message); }
+
+  // ── Instagram ────────────────────────────────────────────
+  try {
+    const igRes = await fetch(`${API_BASE}/api/instagram?type=account`, { headers: authHeaders });
+    const ig = await igRes.json();
+    if (ig.configured && !ig.error) {
+      const igCard = document.querySelector('#social-cards-grid .social-card:nth-child(3)');
+      if (igCard) {
+        const statValues = igCard.querySelectorAll('.social-stat-value');
+        if (statValues[0]) statValues[0].textContent = fmtN(ig.followersCount || 0);
+        if (statValues[1]) statValues[1].textContent = fmtN(ig.mediaCount || 0);
+      }
+    }
+  } catch (err) { console.warn('[Live] Instagram:', err.message); }
+
+  // ── LinkedIn ─────────────────────────────────────────────
+  try {
+    const liRes = await fetch(`${API_BASE}/api/linkedin?type=page`, { headers: authHeaders });
+    const li = await liRes.json();
+
+    const liCard = document.querySelector('#social-cards-grid .social-card:nth-child(1)');
+    if (liCard) {
+      if (li.authenticated === false && li.configured) {
+        // Show connect button if not yet authenticated
+        let connectBtn = liCard.querySelector('.li-connect-btn');
+        if (!connectBtn) {
+          connectBtn = document.createElement('a');
+          connectBtn.className = 'li-connect-btn badge badge-blue';
+          connectBtn.href = `${API_BASE}/api/linkedin?type=auth`;
+          connectBtn.textContent = '🔗 Connect LinkedIn';
+          connectBtn.style.cssText = 'margin-top:10px;display:inline-flex;cursor:pointer;text-decoration:none;';
+          liCard.appendChild(connectBtn);
+        }
+      } else if (li.configured && !li.error) {
+        const statValues = liCard.querySelectorAll('.social-stat-value');
+        if (statValues[0]) statValues[0].textContent = fmtN(li.followers || 0);
+        if (statValues[1]) statValues[1].textContent = fmtN((li.recentPosts || []).length);
+      }
+    }
+  } catch (err) { console.warn('[Live] LinkedIn:', err.message); }
+
+  // ── Flodesk ──────────────────────────────────────────────
+  try {
+    const [subsRes, emailsRes] = await Promise.all([
+      fetch(`${API_BASE}/api/flodesk?type=subscribers`, { headers: authHeaders }),
+      fetch(`${API_BASE}/api/flodesk?type=emails`, { headers: authHeaders })
+    ]);
+    const subs   = await subsRes.json();
+    const emails = await emailsRes.json();
+
+    if (subs.configured && !subs.error) {
+      const subsEl = $('kpi-subscribers');
+      if (subsEl) subsEl.textContent = fmt(subs.totalCount);
+
+      const nlSection = $('section-newsletter');
+      if (nlSection) {
+        const kpiValues = nlSection.querySelectorAll('.kpi-value');
+        if (kpiValues[0]) kpiValues[0].textContent = fmtN(subs.totalCount);
+        if (kpiValues[0] && subs.recentGrowth !== null) {
+          const trend = kpiValues[0].nextElementSibling;
+          if (trend) trend.textContent = `↑ ${fmtN(subs.recentGrowth)} this month`;
+        }
+      }
+    }
+
+    if (emails.configured && !emails.error && emails.emails && emails.emails.length > 0) {
+      const tbody = $('table-newsletter-issues');
+      if (tbody) {
+        tbody.innerHTML = emails.emails.map((e, i) => `
+          <tr>
+            <td><span class="badge badge-gray">#${emails.emails.length - i}</span></td>
+            <td class="text-muted text-sm">${e.sentAt ? new Date(e.sentAt).toLocaleDateString('en-CA', {year:'numeric',month:'short',day:'numeric'}) : '—'}</td>
+            <td class="table-primary">${e.subject}</td>
+            <td>${fmtN(e.sentCount)}</td>
+            <td>—</td>
+            <td><span class="badge badge-blue">${(e.openRate * 100).toFixed(1)}%</span></td>
+            <td>—</td>
+            <td><span class="badge badge-green">${(e.clickRate * 100).toFixed(1)}%</span></td>
+          </tr>
+        `).join('');
+      }
+    }
+  } catch (err) { console.warn('[Live] Flodesk:', err.message); }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+function init() {
+  loadConfig();
+  updateDate();
+  // Initialize first section
+  initializedSections.add('overview');
+  initOverview();
+
+  // Wire up login overlay
+  const loginBtn = $('login-btn');
+  const loginPassword = $('login-password');
+  if (loginBtn) loginBtn.addEventListener('click', doLogin);
+  if (loginPassword) loginPassword.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+  // Check auth and load live data if token exists
+  checkAuth();
+
+  // Handle LinkedIn OAuth redirect params
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('linkedin_connected')) {
+    console.log('[LinkedIn] Successfully connected.');
+    history.replaceState({}, '', '/');
+  }
+  if (params.get('linkedin_error')) {
+    console.warn('[LinkedIn] Auth error:', params.get('linkedin_error'));
+    history.replaceState({}, '', '/');
+  }
+}
+
+init();
+</script>
+</body>
+</html>
