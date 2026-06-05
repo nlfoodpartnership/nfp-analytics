@@ -19,9 +19,16 @@ exports.handler = async (event) => {
 
   try {
     if (type === 'subscribers') {
-      const r = await fetch(`${baseUrl}/subscribers`, { headers });
-      const data = await r.json();
-      return json({ configured: true, total: data.total, data: data.data || [] });
+      let all = [], page = 1, hasMore = true;
+      while (hasMore) {
+        const r = await fetch(`${baseUrl}/subscribers?page=${page}&per_page=100`, { headers });
+        const data = await r.json();
+        const items = data.data || [];
+        all = all.concat(items);
+        hasMore = items.length === 100;
+        page++;
+      }
+      return json({ configured: true, total: all.length, data: all });
     }
 
     if (type === 'emails') {

@@ -2545,12 +2545,12 @@ async function fetchLiveData() {
 
     if (subs.configured && !subs.error) {
       const subsEl = $('kpi-subscribers');
-      if (subsEl) subsEl.textContent = fmt(subs.totalCount);
+      if (subsEl) subsEl.textContent = fmt(subs.total);
 
       const nlSection = $('section-newsletter');
       if (nlSection) {
         const kpiValues = nlSection.querySelectorAll('.kpi-value');
-        if (kpiValues[0]) kpiValues[0].textContent = fmtN(subs.totalCount);
+        if (kpiValues[0]) kpiValues[0].textContent = fmtN(subs.total);
         if (kpiValues[0] && subs.recentGrowth !== null) {
           const trend = kpiValues[0].nextElementSibling;
           if (trend) trend.textContent = `↑ ${fmtN(subs.recentGrowth)} this month`;
