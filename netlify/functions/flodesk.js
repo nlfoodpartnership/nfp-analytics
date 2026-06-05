@@ -19,22 +19,16 @@ exports.handler = async (event) => {
 
   try {
     if (type === 'subscribers') {
-      // Find the Newsletter segment ID
-      const segRes = await fetch(`${baseUrl}/segments`, { headers });
-      const segData = await segRes.json();
-      const newsletterSeg = (segData.data || []).find(s => s.name === 'Newsletter');
-      const segParam = newsletterSeg ? `&segment_id=${newsletterSeg.id}` : '';
-
-      let all = [], page = 1, hasMore = true;
-      while (hasMore) {
-        const r = await fetch(`${baseUrl}/subscribers?page=${page}&per_page=100${segParam}`, { headers });
-        const data = await r.json();
-        const items = data.data || [];
-        all = all.concat(items);
-        hasMore = items.length === 100;
-        page++;
-      }
-      return json({ configured: true, total: all.length, data: all, segment: newsletterSeg?.name || 'all' });
+      // Fetch up to 3 pages in parallel to get a fast count without paginating everything
+      const pages = await Promise.all([1, 2, 3].map(p =>
+        fetch(`${baseUrl}/subscribers?page=${p}&per_page=100`, { headers }).then(r => r.json())
+      ));
+      const all = pages.flatMap(d => d.data || []);
+      const hasMore = (pages[2].data || []).length === 100;
+      const total = hasMore ? `${all.length}+` : all.length;
+      const active = all.filter(s => s.status === 'active').length;
+      const activeTotal = hasMore ? `${active}+` : active;
+      return json({ configured: true, total, active: activeTotal, data: all });
     }
 
     if (type === 'emails') {
