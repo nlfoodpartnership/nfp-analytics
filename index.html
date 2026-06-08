@@ -563,6 +563,8 @@ main {
 
   <div id="content-section" style="display:none">
     <div id="content-linkedin" class="content-block"></div>
+    <div id="content-facebook" class="content-block"></div>
+    <div id="content-instagram" class="content-block"></div>
     <div id="content-nfpconnects" class="content-block"></div>
   </div>
 
@@ -773,7 +775,19 @@ function renderContentSection() {
       return vol(b.name) - vol(a.name);
     });
 
+  // Facebook posts
+  const facebookPosts = filtered
+    .filter(r => r.contentType === 'Facebook post')
+    .sort((a, b) => (b.pageViews || 0) - (a.pageViews || 0));
+
+  // Instagram posts
+  const instagramPosts = filtered
+    .filter(r => r.contentType === 'Instagram post')
+    .sort((a, b) => (b.pageViews || 0) - (a.pageViews || 0));
+
   const linkedinEl = document.getElementById('content-linkedin');
+  const fbEl = document.getElementById('content-facebook');
+  const igEl = document.getElementById('content-instagram');
   const nfpEl = document.getElementById('content-nfpconnects');
   const nlEl = document.getElementById('content-newsletter');
 
@@ -866,6 +880,88 @@ function renderContentSection() {
     linkedinEl.innerHTML = '';
   }
 
+  if (facebookPosts.length > 0) {
+    fbEl.innerHTML = `
+      <div class="content-block-header">
+        <div class="platform-dot" style="background:#1877F2"></div>
+        <span class="content-block-title">Facebook — Top Posts</span>
+        <span class="content-count">${facebookPosts.length} posts this quarter</span>
+      </div>
+      <div class="content-table-wrap">
+        <table class="content-table">
+          <thead>
+            <tr>
+              <th style="width:32px">#</th>
+              <th>Post</th>
+              <th class="right">Impressions</th>
+              <th class="right">Reactions</th>
+              <th class="right">Comments</th>
+              <th class="right">Shares</th>
+              <th class="right">Eng. rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${facebookPosts.map((p, i) => `
+              <tr>
+                <td><span class="rank-badge ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
+                <td>
+                  <div class="post-name" title="${p.name}">${p.name}</div>
+                  ${p.url ? `<a class="post-link" href="${p.url}" target="_blank">View on Facebook ↗</a>` : ''}
+                </td>
+                <td class="right">${p.pageViews != null ? p.pageViews.toLocaleString('nl-NL') : '—'}</td>
+                <td class="right">${p.likes != null ? p.likes : '—'}</td>
+                <td class="right">${p.comments != null ? p.comments : '—'}</td>
+                <td class="right">${p.shares != null ? p.shares : '—'}</td>
+                <td class="right">${p.ctr != null ? p.ctr.toFixed(1) + '%' : '—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } else {
+    fbEl.innerHTML = '';
+  }
+
+  if (instagramPosts.length > 0) {
+    igEl.innerHTML = `
+      <div class="content-block-header">
+        <div class="platform-dot" style="background:#E1306C"></div>
+        <span class="content-block-title">Instagram — Top Posts</span>
+        <span class="content-count">${instagramPosts.length} posts this quarter</span>
+      </div>
+      <div class="content-table-wrap">
+        <table class="content-table">
+          <thead>
+            <tr>
+              <th style="width:32px">#</th>
+              <th>Post</th>
+              <th class="right">Views</th>
+              <th class="right">Reach</th>
+              <th class="right">Likes</th>
+              <th class="right">Eng. rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${instagramPosts.map((p, i) => `
+              <tr>
+                <td><span class="rank-badge ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
+                <td>
+                  <div class="post-name" title="${p.name}">${p.name}</div>
+                  ${p.url ? `<a class="post-link" href="${p.url}" target="_blank">View on Instagram ↗</a>` : ''}
+                </td>
+                <td class="right">${p.pageViews != null ? p.pageViews.toLocaleString('nl-NL') : '—'}</td>
+                <td class="right">${p.uniqueVisitors != null ? p.uniqueVisitors.toLocaleString('nl-NL') : '—'}</td>
+                <td class="right">${p.likes != null ? p.likes : '—'}</td>
+                <td class="right">${p.ctr != null ? p.ctr.toFixed(1) + '%' : '—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } else {
+    igEl.innerHTML = '';
+  }
+
   if (nfpContent.length > 0) {
     nfpEl.innerHTML = `
       <div class="content-block-header">
@@ -906,16 +1002,19 @@ function renderContentSection() {
     nfpEl.innerHTML = '';
   }
 
-  const showLinkedin = ['all', 'social'].includes(activeCategory);
+  const showSocial = ['all', 'social'].includes(activeCategory);
   const showNfp = ['all', 'website'].includes(activeCategory);
   const showNl = ['all', 'newsletter'].includes(activeCategory);
 
-  linkedinEl.style.display = (showLinkedin && linkedinPosts.length > 0) ? 'block' : 'none';
+  linkedinEl.style.display = (showSocial && linkedinPosts.length > 0) ? 'block' : 'none';
+  fbEl.style.display = (showSocial && facebookPosts.length > 0) ? 'block' : 'none';
+  igEl.style.display = (showSocial && instagramPosts.length > 0) ? 'block' : 'none';
   nfpEl.style.display = (showNfp && nfpContent.length > 0) ? 'block' : 'none';
   nlEl.style.display = (showNl && newsletters.length > 0) ? 'block' : 'none';
   document.getElementById('content-newsletter-section').style.display = (showNl && newsletters.length > 0) ? 'block' : 'none';
 
-  const hasContent = (showLinkedin && linkedinPosts.length > 0) || (showNfp && nfpContent.length > 0);
+  const hasContent = (showSocial && (linkedinPosts.length > 0 || facebookPosts.length > 0 || instagramPosts.length > 0))
+    || (showNfp && nfpContent.length > 0);
   document.getElementById('content-section').style.display = hasContent ? 'block' : 'none';
 }
 
