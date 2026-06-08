@@ -562,6 +562,7 @@ main {
   </main>
 
   <div id="content-section" style="display:none">
+    <div id="content-newsletter" class="content-block"></div>
     <div id="content-linkedin" class="content-block"></div>
     <div id="content-nfpconnects" class="content-block"></div>
   </div>
@@ -760,8 +761,65 @@ function renderContentSection() {
     .filter(r => r.platform === 'nfpconnects.com')
     .sort((a, b) => (b.pageViews || 0) - (a.pageViews || 0));
 
+  // Email newsletter issues
+  const newsletters = filtered
+    .filter(r => r.contentType === 'Newsletter issue' && r.platform === 'Email newsletter')
+    .sort((a, b) => {
+      // Sort by volume number extracted from name, fallback to name
+      const vol = name => { const m = name.match(/Vol\.\s*(\d+)/i); return m ? parseInt(m[1]) : 0; };
+      return vol(b.name) - vol(a.name);
+    });
+
   const linkedinEl = document.getElementById('content-linkedin');
   const nfpEl = document.getElementById('content-nfpconnects');
+  const nlEl = document.getElementById('content-newsletter');
+
+  // Parse send date from Notes field: "Sent DD Mon YYYY at HH:MMam/pm"
+  function parseSentDate(notes) {
+    const m = notes.match(/Sent (\d{1,2} \w+ \d{4})/);
+    return m ? m[1] : '';
+  }
+
+  if (newsletters.length > 0) {
+    nlEl.innerHTML = `
+      <div class="content-block-header">
+        <div class="platform-dot" style="background:#22C55E"></div>
+        <span class="content-block-title">Email Newsletter — Issues this quarter</span>
+        <span class="content-count">${newsletters.length} issue${newsletters.length > 1 ? 's' : ''}</span>
+      </div>
+      <div class="content-table-wrap">
+        <table class="content-table">
+          <thead>
+            <tr>
+              <th>Issue</th>
+              <th class="right">Delivered</th>
+              <th class="right">Open rate</th>
+              <th class="right">Unique opens</th>
+              <th class="right">Click rate</th>
+              <th class="right">Unique clicks</th>
+              <th>Sent</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${newsletters.map(p => {
+              const openRate = (p.pageViews && p.likes) ? ((p.likes / p.pageViews) * 100).toFixed(1) + '%' : '—';
+              const sentDate = parseSentDate(p.notes);
+              return `<tr>
+                <td><div class="post-name" title="${p.name}">${p.name}</div></td>
+                <td class="right">${p.pageViews != null ? p.pageViews.toLocaleString('nl-NL') : '—'}</td>
+                <td class="right">${openRate}</td>
+                <td class="right">${p.likes != null ? p.likes.toLocaleString('nl-NL') : '—'}</td>
+                <td class="right">${p.ctr != null ? p.ctr.toFixed(1) + '%' : '—'}</td>
+                <td class="right">${p.uniqueVisitors != null ? p.uniqueVisitors.toLocaleString('nl-NL') : '—'}</td>
+                <td class="muted">${sentDate}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } else {
+    nlEl.innerHTML = '';
+  }
 
   if (linkedinPosts.length > 0) {
     linkedinEl.innerHTML = `
@@ -847,11 +905,15 @@ function renderContentSection() {
 
   const showLinkedin = ['all', 'social'].includes(activeCategory);
   const showNfp = ['all', 'website'].includes(activeCategory);
+  const showNl = ['all', 'newsletter'].includes(activeCategory);
 
   linkedinEl.style.display = (showLinkedin && linkedinPosts.length > 0) ? 'block' : 'none';
   nfpEl.style.display = (showNfp && nfpContent.length > 0) ? 'block' : 'none';
+  nlEl.style.display = (showNl && newsletters.length > 0) ? 'block' : 'none';
 
-  const hasContent = (showLinkedin && linkedinPosts.length > 0) || (showNfp && nfpContent.length > 0);
+  const hasContent = (showLinkedin && linkedinPosts.length > 0)
+    || (showNfp && nfpContent.length > 0)
+    || (showNl && newsletters.length > 0);
   document.getElementById('content-section').style.display = hasContent ? 'block' : 'none';
 }
 
