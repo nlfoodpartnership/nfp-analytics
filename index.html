@@ -715,7 +715,13 @@ function renderContentSection() {
     nfpEl.innerHTML = '';
   }
 
-  const hasContent = linkedinPosts.length > 0 || nfpContent.length > 0;
+  const showLinkedin = ['all', 'social'].includes(activeCategory);
+  const showNfp = ['all', 'website'].includes(activeCategory);
+
+  linkedinEl.style.display = (showLinkedin && linkedinPosts.length > 0) ? 'block' : 'none';
+  nfpEl.style.display = (showNfp && nfpContent.length > 0) ? 'block' : 'none';
+
+  const hasContent = (showLinkedin && linkedinPosts.length > 0) || (showNfp && nfpContent.length > 0);
   document.getElementById('content-section').style.display = hasContent ? 'block' : 'none';
 }
 
@@ -747,6 +753,7 @@ function setCategory(btn) {
   btn.classList.add('active');
   activeCategory = btn.dataset.cat;
   renderDashboard();
+  renderContentSection();
 }
 
 // ── Formatting ────────────────────────────────────────
