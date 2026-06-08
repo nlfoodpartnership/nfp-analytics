@@ -273,7 +273,7 @@ main {
 }
 
 /* ── Content detail section ── */
-#content-section {
+#content-section, #content-newsletter-section {
   padding: 0 24px;
   max-width: 1280px;
   margin: 0 auto 8px;
@@ -562,7 +562,6 @@ main {
   </main>
 
   <div id="content-section" style="display:none">
-    <div id="content-newsletter" class="content-block"></div>
     <div id="content-linkedin" class="content-block"></div>
     <div id="content-nfpconnects" class="content-block"></div>
   </div>
@@ -586,6 +585,10 @@ main {
     <div class="trend-card">
       <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
     </div>
+  </div>
+
+  <div id="content-newsletter-section" style="display:none">
+    <div id="content-newsletter" class="content-block"></div>
   </div>
 </div>
 
@@ -910,10 +913,9 @@ function renderContentSection() {
   linkedinEl.style.display = (showLinkedin && linkedinPosts.length > 0) ? 'block' : 'none';
   nfpEl.style.display = (showNfp && nfpContent.length > 0) ? 'block' : 'none';
   nlEl.style.display = (showNl && newsletters.length > 0) ? 'block' : 'none';
+  document.getElementById('content-newsletter-section').style.display = (showNl && newsletters.length > 0) ? 'block' : 'none';
 
-  const hasContent = (showLinkedin && linkedinPosts.length > 0)
-    || (showNfp && nfpContent.length > 0)
-    || (showNl && newsletters.length > 0);
+  const hasContent = (showLinkedin && linkedinPosts.length > 0) || (showNfp && nfpContent.length > 0);
   document.getElementById('content-section').style.display = hasContent ? 'block' : 'none';
 }
 
