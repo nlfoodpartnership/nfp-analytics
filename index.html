@@ -272,6 +272,101 @@ main {
   color: #94A3B8;
 }
 
+/* ── Content detail section ── */
+#content-section {
+  padding: 0 24px;
+  max-width: 1280px;
+  margin: 0 auto 8px;
+}
+.content-block { margin-bottom: 24px; }
+.content-block-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.content-block-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+.content-count {
+  font-size: 12px;
+  color: #94A3B8;
+  font-weight: 500;
+}
+.content-table-wrap {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.content-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.content-table th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #94A3B8;
+  font-weight: 600;
+  background: #F8FAFC;
+  border-bottom: 1px solid #F1F5F9;
+  white-space: nowrap;
+}
+.content-table th.right { text-align: right; }
+.content-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #F8FAFC;
+  vertical-align: middle;
+}
+.content-table tr:last-child td { border-bottom: none; }
+.content-table tr:hover td { background: #F8FAFC; }
+.content-table td.right { text-align: right; font-weight: 600; color: #1E293B; }
+.content-table td.muted { color: #94A3B8; font-size: 12px; }
+.post-name {
+  font-weight: 500;
+  color: #1E293B;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.post-link { color: #2563EB; text-decoration: none; font-size: 11px; }
+.post-link:hover { text-decoration: underline; }
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  background: #F1F5F9;
+  color: #64748B;
+  flex-shrink: 0;
+}
+.rank-badge.top { background: #FEF3C7; color: #92400E; }
+.type-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #F1F5F9;
+  color: #64748B;
+}
+.no-content {
+  padding: 32px;
+  text-align: center;
+  color: #94A3B8;
+  font-size: 14px;
+}
+
 /* ── Trend section ── */
 #trend-section {
   margin-top: 32px;
@@ -330,7 +425,7 @@ main {
 <div id="app" style="display:none">
   <header>
     <span class="logo">NFP <span>Analytics</span></span>
-    <select id="quarter-select" onchange="renderDashboard()"></select>
+    <select id="quarter-select" onchange="renderDashboard(); renderContentSection()"></select>
   </header>
 
   <div id="category-nav">
@@ -347,6 +442,11 @@ main {
     <div id="error-msg"></div>
     <div id="cards-grid" style="display:none"></div>
   </main>
+
+  <div id="content-section" style="display:none">
+    <div id="content-linkedin" class="content-block"></div>
+    <div id="content-nfpconnects" class="content-block"></div>
+  </div>
 
   <div id="trend-section" style="display:none">
     <div class="trend-header">
@@ -417,6 +517,7 @@ const PLATFORM_ORDER = [
 
 // ── State ──────────────────────────────────────────────
 let allRecords = [];
+let contentRecords = [];
 let authToken = sessionStorage.getItem('nfp_auth_token') || '';
 let activeCategory = 'all';
 let trendChart = null;
@@ -484,6 +585,9 @@ async function loadData() {
     populateTrendSelectors();
     renderTrend();
     document.getElementById('trend-section').style.display = 'block';
+
+    // Load content performance data in parallel
+    loadContentData();
   } catch (err) {
     showError('Failed to load data: ' + err.message);
   }
@@ -494,6 +598,125 @@ function showError(msg) {
   const el = document.getElementById('error-msg');
   el.textContent = msg;
   el.style.display = 'block';
+}
+
+// ── Content data ─────────────────────────────────────
+async function loadContentData() {
+  try {
+    const res = await fetch('/api/content', {
+      headers: { 'X-Dashboard-Token': authToken },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.configured || data.error) return;
+    contentRecords = data.records || [];
+    renderContentSection();
+  } catch {}
+}
+
+function renderContentSection() {
+  const selected = getSelectedQuarter();
+  const [year, quarter] = selected.split(' ');
+
+  const filtered = contentRecords.filter(r => r.year === year && r.quarter === quarter);
+
+  // LinkedIn posts
+  const linkedinPosts = filtered
+    .filter(r => r.contentType === 'LinkedIn post')
+    .sort((a, b) => (b.pageViews || 0) - (a.pageViews || 0));
+
+  // NFPConnects content (community pages, conversations, insight posts)
+  const nfpContent = filtered
+    .filter(r => r.platform === 'nfpconnects.com')
+    .sort((a, b) => (b.pageViews || 0) - (a.pageViews || 0));
+
+  const linkedinEl = document.getElementById('content-linkedin');
+  const nfpEl = document.getElementById('content-nfpconnects');
+
+  if (linkedinPosts.length > 0) {
+    linkedinEl.innerHTML = `
+      <div class="content-block-header">
+        <div class="platform-dot" style="background:#0A66C2"></div>
+        <span class="content-block-title">LinkedIn — Top Posts</span>
+        <span class="content-count">${linkedinPosts.length} posts this quarter</span>
+      </div>
+      <div class="content-table-wrap">
+        <table class="content-table">
+          <thead>
+            <tr>
+              <th style="width:32px">#</th>
+              <th>Post</th>
+              <th class="right">Impressions</th>
+              <th class="right">Reactions</th>
+              <th class="right">Comments</th>
+              <th class="right">Shares</th>
+              <th class="right">CTR</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${linkedinPosts.map((p, i) => `
+              <tr>
+                <td><span class="rank-badge ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
+                <td>
+                  <div class="post-name" title="${p.name}">${p.name}</div>
+                  ${p.url ? `<a class="post-link" href="${p.url}" target="_blank">View on LinkedIn ↗</a>` : ''}
+                </td>
+                <td class="right">${p.pageViews != null ? p.pageViews.toLocaleString('nl-NL') : '—'}</td>
+                <td class="right">${p.likes != null ? p.likes : '—'}</td>
+                <td class="right">${p.comments != null ? p.comments : '—'}</td>
+                <td class="right">${p.shares != null ? p.shares : '—'}</td>
+                <td class="right">${p.ctr != null ? p.ctr.toFixed(2) + '%' : '—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } else {
+    linkedinEl.innerHTML = '';
+  }
+
+  if (nfpContent.length > 0) {
+    nfpEl.innerHTML = `
+      <div class="content-block-header">
+        <div class="platform-dot" style="background:#7C3AED"></div>
+        <span class="content-block-title">NFPConnects — Content Performance</span>
+        <span class="content-count">${nfpContent.length} items this quarter</span>
+      </div>
+      <div class="content-table-wrap">
+        <table class="content-table">
+          <thead>
+            <tr>
+              <th style="width:32px">#</th>
+              <th>Content</th>
+              <th>Type</th>
+              <th class="right">Page Views</th>
+              <th class="right">Unique Visitors</th>
+              <th class="right">Avg Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${nfpContent.map((p, i) => `
+              <tr>
+                <td><span class="rank-badge ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
+                <td>
+                  <div class="post-name" title="${p.name}">${p.name}</div>
+                  ${p.url ? `<a class="post-link" href="${p.url}" target="_blank">View on site ↗</a>` : ''}
+                </td>
+                <td><span class="type-badge">${p.contentType}</span></td>
+                <td class="right">${p.pageViews != null ? p.pageViews.toLocaleString('nl-NL') : '—'}</td>
+                <td class="right">${p.uniqueVisitors != null ? p.uniqueVisitors.toLocaleString('nl-NL') : '—'}</td>
+                <td class="right">${p.avgTimeOnPage != null ? fmt(p.avgTimeOnPage, 'Avg Time on Page') : '—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } else {
+    nfpEl.innerHTML = '';
+  }
+
+  const hasContent = linkedinPosts.length > 0 || nfpContent.length > 0;
+  document.getElementById('content-section').style.display = hasContent ? 'block' : 'none';
 }
 
 // ── Quarter selector ──────────────────────────────────
