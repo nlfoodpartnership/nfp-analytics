@@ -367,6 +367,123 @@ main {
   font-size: 14px;
 }
 
+/* ── Insights newsfeed ── */
+#insights-section {
+  padding: 24px;
+  max-width: 860px;
+  margin: 0 auto 40px;
+}
+.insights-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.insights-header h2 { font-size: 18px; font-weight: 700; }
+.insights-updated {
+  font-size: 12px;
+  color: #94A3B8;
+}
+.insight-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  margin-bottom: 12px;
+  overflow: hidden;
+  border-left: 4px solid #2563EB;
+}
+.insight-card.collapsed .insight-body { display: none; }
+.insight-toggle {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 16px 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.insight-toggle:hover { background: #F8FAFC; }
+.insight-toggle-title {
+  font-size: 15px;
+  font-weight: 700;
+  flex: 1;
+  color: #1E293B;
+}
+.insight-toggle-caret {
+  font-size: 12px;
+  color: #94A3B8;
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+.insight-card:not(.collapsed) .insight-toggle-caret {
+  transform: rotate(180deg);
+}
+.insight-body {
+  padding: 0 20px 20px;
+}
+.insight-body h2 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1E293B;
+  margin: 20px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #F1F5F9;
+}
+.insight-body h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  margin: 14px 0 6px;
+}
+.insight-body p {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #334155;
+  margin-bottom: 10px;
+}
+.insight-body ul, .insight-body ol {
+  margin: 6px 0 12px 18px;
+}
+.insight-body li {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #334155;
+  margin-bottom: 4px;
+}
+.insight-body a { color: #2563EB; text-decoration: none; }
+.insight-body a:hover { text-decoration: underline; }
+.insight-body hr {
+  border: none;
+  border-top: 1px solid #F1F5F9;
+  margin: 16px 0;
+}
+.insight-callout {
+  background: #F0F9FF;
+  border-left: 3px solid #0EA5E9;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 10px 0;
+  font-size: 14px;
+  color: #0C4A6E;
+  line-height: 1.6;
+}
+.insight-quote {
+  border-left: 3px solid #E2E8F0;
+  padding: 6px 14px;
+  margin: 8px 0;
+  color: #64748B;
+  font-size: 14px;
+  font-style: italic;
+}
+.insights-loading {
+  text-align: center;
+  padding: 60px;
+  color: #94A3B8;
+  font-size: 14px;
+}
+
 /* ── Trend section ── */
 #trend-section {
   margin-top: 32px;
@@ -435,6 +552,7 @@ main {
     <button data-cat="website" onclick="setCategory(this)">Website</button>
     <button data-cat="publications" onclick="setCategory(this)">Publications</button>
     <button data-cat="podcast" onclick="setCategory(this)">Podcast</button>
+    <button data-cat="insights" onclick="setCategory(this)">✦ Insights</button>
   </div>
 
   <main>
@@ -446,6 +564,14 @@ main {
   <div id="content-section" style="display:none">
     <div id="content-linkedin" class="content-block"></div>
     <div id="content-nfpconnects" class="content-block"></div>
+  </div>
+
+  <div id="insights-section" style="display:none">
+    <div class="insights-header">
+      <h2>Content Insights</h2>
+      <span class="insights-updated" id="insights-updated"></span>
+    </div>
+    <div id="insights-feed"><div class="insights-loading">Loading insights…</div></div>
   </div>
 
   <div id="trend-section" style="display:none">
@@ -520,6 +646,8 @@ const PLATFORM_ORDER = [
 // ── State ──────────────────────────────────────────────
 let allRecords = [];
 let contentRecords = [];
+let insightSections = [];
+let insightsLoaded = false;
 let authToken = sessionStorage.getItem('nfp_auth_token') || '';
 let activeCategory = 'all';
 let trendChart = null;
@@ -754,6 +882,16 @@ function setCategory(btn) {
   document.querySelectorAll('#category-nav button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   activeCategory = btn.dataset.cat;
+
+  const isInsights = activeCategory === 'insights';
+  document.getElementById('quarter-select').style.display = isInsights ? 'none' : '';
+  document.getElementById('insights-section').style.display = isInsights ? 'block' : 'none';
+  document.getElementById('trend-section').style.display = isInsights ? 'none' : (allRecords.length ? 'block' : 'none');
+
+  if (isInsights) {
+    if (!insightsLoaded) loadInsightsData();
+    return;
+  }
   renderDashboard();
   renderContentSection();
 }
@@ -917,6 +1055,75 @@ function renderDashboard() {
       ${pubHtml}
     </div>`;
   }).join('');
+}
+
+// ── Insights ─────────────────────────────────────────
+async function loadInsightsData() {
+  try {
+    const res = await fetch('/api/insights', {
+      headers: { 'X-Dashboard-Token': authToken },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.configured || data.error) {
+      document.getElementById('insights-feed').innerHTML =
+        `<div class="insights-loading">Could not load insights: ${data.error || 'not configured'}</div>`;
+      return;
+    }
+    insightSections = data.sections || [];
+    insightsLoaded = true;
+
+    if (data.lastEdited) {
+      const d = new Date(data.lastEdited);
+      document.getElementById('insights-updated').textContent =
+        'Updated ' + d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
+    renderInsights();
+  } catch (err) {
+    document.getElementById('insights-feed').innerHTML =
+      `<div class="insights-loading">Failed to load insights.</div>`;
+  }
+}
+
+function renderInsights() {
+  const feed = document.getElementById('insights-feed');
+  if (!insightSections.length) {
+    feed.innerHTML = '<div class="insights-loading">No insights available yet.</div>';
+    return;
+  }
+
+  feed.innerHTML = insightSections.map((section, idx) => {
+    const collapsed = idx > 0 ? 'collapsed' : '';
+    const bodyHtml = section.items.map(item => {
+      if (item.type === 'h2') return `<h2>${item.html}</h2>`;
+      if (item.type === 'h3') return `<h3>${item.html}</h3>`;
+      if (item.type === 'p') return `<p>${item.html}</p>`;
+      if (item.type === 'divider') return `<hr>`;
+      if (item.type === 'callout') return `<div class="insight-callout">${item.html}</div>`;
+      if (item.type === 'quote') return `<div class="insight-quote">${item.html}</div>`;
+      if (item.type === 'ul') return `<ul>${item.items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+      if (item.type === 'ol') return `<ol>${item.items.map(i => `<li>${i}</li>`).join('')}</ol>`;
+      return '';
+    }).join('');
+
+    return `<div class="insight-card ${collapsed}" id="insight-${idx}">
+      <button class="insight-toggle" onclick="toggleInsight(${idx})" aria-expanded="${idx === 0}">
+        <span class="insight-toggle-title">${escHtml(section.title)}</span>
+        <span class="insight-toggle-caret">▼</span>
+      </button>
+      <div class="insight-body">${bodyHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+function toggleInsight(idx) {
+  const card = document.getElementById(`insight-${idx}`);
+  card.classList.toggle('collapsed');
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 // ── Trend chart ───────────────────────────────────────
