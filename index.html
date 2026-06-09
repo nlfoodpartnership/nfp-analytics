@@ -273,7 +273,7 @@ main {
 }
 
 /* ── Content detail section ── */
-#content-section, #content-newsletter-section {
+#content-section, #content-newsletter-section, #content-publications-section {
   padding: 0 24px;
   max-width: 1280px;
   margin: 0 auto 8px;
@@ -542,7 +542,7 @@ main {
 <div id="app" style="display:none">
   <header>
     <span class="logo">NFP <span>Analytics</span></span>
-    <select id="quarter-select" onchange="renderDashboard(); renderContentSection()"></select>
+    <select id="quarter-select" onchange="renderDashboard(); renderContentSection(); renderPublicationsSection()"></select>
   </header>
 
   <div id="category-nav">
@@ -591,6 +591,10 @@ main {
 
   <div id="content-newsletter-section" style="display:none">
     <div id="content-newsletter" class="content-block"></div>
+  </div>
+
+  <div id="content-publications-section" style="display:none">
+    <div id="content-publications" class="content-block"></div>
   </div>
 </div>
 
@@ -721,6 +725,7 @@ async function loadData() {
     populateTrendSelectors();
     renderTrend();
     document.getElementById('trend-section').style.display = 'block';
+    renderPublicationsSection();
 
     // Load content performance data in parallel
     loadContentData();
@@ -1057,6 +1062,7 @@ function setCategory(btn) {
   }
   renderDashboard();
   renderContentSection();
+  renderPublicationsSection();
 }
 
 // ── Formatting ────────────────────────────────────────
@@ -1218,6 +1224,67 @@ function renderDashboard() {
       ${pubHtml}
     </div>`;
   }).join('');
+}
+
+// ── Publications table ────────────────────────────────
+function renderPublicationsSection() {
+  const selected = getSelectedQuarter();
+  const [year, quarter] = selected.split(' ');
+  const showPubs = ['all', 'publications'].includes(activeCategory);
+
+  const section = document.getElementById('content-publications-section');
+  const el = document.getElementById('content-publications');
+
+  if (!showPubs) { section.style.display = 'none'; return; }
+
+  // Gather per-publication records for this quarter
+  const pubRecs = allRecords.filter(r =>
+    r.platform === 'Issuu' && r.publication &&
+    r.year === year && r.quarter === quarter
+  );
+
+  if (pubRecs.length === 0) { section.style.display = 'none'; return; }
+
+  // Group by publication → { uniqueVisitors, impressions, notes }
+  const byPub = {};
+  for (const r of pubRecs) {
+    if (!byPub[r.publication]) byPub[r.publication] = { name: r.publication, uniqueVisitors: null, impressions: null, notes: r.notes };
+    if (r.metric === 'Unique Visitors') byPub[r.publication].uniqueVisitors = r.result;
+    if (r.metric === 'Impressions') byPub[r.publication].impressions = r.result;
+  }
+
+  const pubs = Object.values(byPub).sort((a, b) => (b.uniqueVisitors || 0) - (a.uniqueVisitors || 0));
+
+  el.innerHTML = `
+    <div class="content-block-header">
+      <div class="platform-dot" style="background:#F26522"></div>
+      <span class="content-block-title">Issuu — Publications</span>
+      <span class="content-count">${pubs.length} publication${pubs.length > 1 ? 's' : ''} this quarter</span>
+    </div>
+    <div class="content-table-wrap">
+      <table class="content-table">
+        <thead>
+          <tr>
+            <th style="width:32px">#</th>
+            <th>Publication</th>
+            <th class="right">Reads</th>
+            <th class="right">Impressions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${pubs.map((p, i) => `
+            <tr>
+              <td><span class="rank-badge ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
+              <td><div class="post-name" title="${p.name}">${p.name}</div></td>
+              <td class="right">${p.uniqueVisitors != null ? p.uniqueVisitors.toLocaleString('nl-NL') : '—'}</td>
+              <td class="right">${p.impressions != null ? p.impressions.toLocaleString('nl-NL') : '—'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>`;
+
+  section.style.display = 'block';
 }
 
 // ── Insights ─────────────────────────────────────────
