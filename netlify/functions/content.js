@@ -2,6 +2,9 @@ const checkAuth = require('./utils/auth-check');
 const DATABASE_ID = '14dbccf1773948b3b5f792f8b093bef6';
 
 exports.handler = async (event) => {
+  if (event.httpMethod !== 'GET') {
+    return { statusCode: 405, headers: { Allow: 'GET' }, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
   if (!checkAuth(event)) {
     return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
   }
@@ -29,7 +32,7 @@ exports.handler = async (event) => {
         body: JSON.stringify(body),
       });
       const data = await r.json();
-      if (!r.ok) return { statusCode: 500, body: JSON.stringify({ configured: true, error: data.message }) };
+      if (!r.ok) { console.error('Notion API error:', data.message); return { statusCode: 500, body: JSON.stringify({ configured: true, error: 'Failed to fetch data' }) }; }
 
       for (const page of (data.results || [])) {
         const p = page.properties;
@@ -61,6 +64,6 @@ exports.handler = async (event) => {
       body: JSON.stringify({ configured: true, records: all }),
     };
   } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ configured: true, error: err.message }) };
+    console.error('content function error:', err); return { statusCode: 500, body: JSON.stringify({ configured: true, error: 'Internal error' }) };
   }
 };

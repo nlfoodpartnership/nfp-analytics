@@ -11,7 +11,10 @@ function richTextToHtml(richTextArray) {
       .replace(/>/g, '&gt;');
     if (t.annotations?.bold) text = `<strong>${text}</strong>`;
     if (t.annotations?.italic) text = `<em>${text}</em>`;
-    if (t.href) text = `<a href="${t.href}" target="_blank" rel="noopener">${text}</a>`;
+    if (t.href) {
+      const hrefSafe = /^https?:\/\//.test(t.href) ? t.href.replace(/"/g, '%22') : '#';
+      text = `<a href="${hrefSafe}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+    }
     return text;
   }).join('');
 }
@@ -83,6 +86,9 @@ function convertBlocksToItems(blocks) {
 }
 
 exports.handler = async (event) => {
+  if (event.httpMethod !== 'GET') {
+    return { statusCode: 405, headers: { Allow: 'GET' }, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
   if (!checkAuth(event)) {
     return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
   }
@@ -142,7 +148,7 @@ exports.handler = async (event) => {
   } catch (err) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ configured: true, error: err.message }),
+      body: JSON.stringify({ configured: true, error: 'Internal error' }),
     };
   }
 };

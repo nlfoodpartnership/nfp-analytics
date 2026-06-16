@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
 <title>NFP Analytics</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -565,6 +566,7 @@ main {
     <div id="content-linkedin" class="content-block"></div>
     <div id="content-facebook" class="content-block"></div>
     <div id="content-instagram" class="content-block"></div>
+    <div id="content-nlfoodpartnership" class="content-block"></div>
     <div id="content-nfpconnects" class="content-block"></div>
   </div>
 
@@ -766,6 +768,11 @@ function renderContentSection() {
     .filter(r => r.contentType === 'LinkedIn post')
     .sort((a, b) => (b.pageViews || 0) - (a.pageViews || 0));
 
+  // NLFoodPartnership.com individual pages
+  const nlfpPages = filtered
+    .filter(r => r.platform === 'nlfoodpartnership.com' && r.contentType === 'Website page')
+    .sort((a, b) => (b.pageViews || 0) - (a.pageViews || 0));
+
   // NFPConnects content (community pages, conversations, insight posts)
   const nfpContent = filtered
     .filter(r => r.platform === 'nfpconnects.com')
@@ -793,6 +800,7 @@ function renderContentSection() {
   const linkedinEl = document.getElementById('content-linkedin');
   const fbEl = document.getElementById('content-facebook');
   const igEl = document.getElementById('content-instagram');
+  const nlfpEl = document.getElementById('content-nlfoodpartnership');
   const nfpEl = document.getElementById('content-nfpconnects');
   const nlEl = document.getElementById('content-newsletter');
 
@@ -827,7 +835,7 @@ function renderContentSection() {
               const openRate = (p.pageViews && p.likes) ? ((p.likes / p.pageViews) * 100).toFixed(1) + '%' : '—';
               const sentDate = parseSentDate(p.notes);
               return `<tr>
-                <td><div class="post-name" title="${p.name}">${p.name}</div></td>
+                <td><div class="post-name" title="${escHtml(p.name)}">${escHtml(p.name)}</div></td>
                 <td class="right">${p.pageViews != null ? p.pageViews.toLocaleString('nl-NL') : '—'}</td>
                 <td class="right">${openRate}</td>
                 <td class="right">${p.likes != null ? p.likes.toLocaleString('nl-NL') : '—'}</td>
@@ -868,8 +876,8 @@ function renderContentSection() {
               <tr>
                 <td><span class="rank-badge ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
                 <td>
-                  <div class="post-name" title="${p.name}">${p.name}</div>
-                  ${p.url ? `<a class="post-link" href="${p.url}" target="_blank">View on LinkedIn ↗</a>` : ''}
+                  <div class="post-name" title="${escHtml(p.name)}">${escHtml(p.name)}</div>
+                  ${safeUrl(p.url) ? `<a class="post-link" href="${safeUrl(p.url)}" target="_blank" rel="noopener noreferrer">View on LinkedIn ↗</a>` : ''}
                 </td>
                 <td class="right">${p.pageViews != null ? p.pageViews.toLocaleString('nl-NL') : '—'}</td>
                 <td class="right">${p.likes != null ? p.likes : '—'}</td>
@@ -910,8 +918,8 @@ function renderContentSection() {
               <tr>
                 <td><span class="rank-badge ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
                 <td>
-                  <div class="post-name" title="${p.name}">${p.name}</div>
-                  ${p.url ? `<a class="post-link" href="${p.url}" target="_blank">View on Facebook ↗</a>` : ''}
+                  <div class="post-name" title="${escHtml(p.name)}">${escHtml(p.name)}</div>
+                  ${safeUrl(p.url) ? `<a class="post-link" href="${safeUrl(p.url)}" target="_blank" rel="noopener noreferrer">View on Facebook ↗</a>` : ''}
                 </td>
                 <td class="right">${p.pageViews != null ? p.pageViews.toLocaleString('nl-NL') : '—'}</td>
                 <td class="right">${p.likes != null ? p.likes : '—'}</td>
@@ -951,8 +959,8 @@ function renderContentSection() {
               <tr>
                 <td><span class="rank-badge ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
                 <td>
-                  <div class="post-name" title="${p.name}">${p.name}</div>
-                  ${p.url ? `<a class="post-link" href="${p.url}" target="_blank">View on Instagram ↗</a>` : ''}
+                  <div class="post-name" title="${escHtml(p.name)}">${escHtml(p.name)}</div>
+                  ${safeUrl(p.url) ? `<a class="post-link" href="${safeUrl(p.url)}" target="_blank" rel="noopener noreferrer">View on Instagram ↗</a>` : ''}
                 </td>
                 <td class="right">${p.pageViews != null ? p.pageViews.toLocaleString('nl-NL') : '—'}</td>
                 <td class="right">${p.uniqueVisitors != null ? p.uniqueVisitors.toLocaleString('nl-NL') : '—'}</td>
@@ -965,6 +973,44 @@ function renderContentSection() {
       </div>`;
   } else {
     igEl.innerHTML = '';
+  }
+
+  if (nlfpPages.length > 0) {
+    nlfpEl.innerHTML = `
+      <div class="content-block-header">
+        <div class="platform-dot" style="background:#2563EB"></div>
+        <span class="content-block-title">NLFoodPartnership.com — Page Performance</span>
+        <span class="content-count">${nlfpPages.length} page${nlfpPages.length > 1 ? 's' : ''} this quarter</span>
+      </div>
+      <div class="content-table-wrap">
+        <table class="content-table">
+          <thead>
+            <tr>
+              <th style="width:32px">#</th>
+              <th>Page</th>
+              <th class="right">Page Views</th>
+              <th class="right">Unique Visitors</th>
+              <th class="right">Avg Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${nlfpPages.map((p, i) => `
+              <tr>
+                <td><span class="rank-badge ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
+                <td>
+                  <div class="post-name" title="${escHtml(p.name)}">${escHtml(p.name)}</div>
+                  ${safeUrl(p.url) ? `<a class="post-link" href="${safeUrl(p.url)}" target="_blank" rel="noopener noreferrer">View page ↗</a>` : ''}
+                </td>
+                <td class="right">${p.pageViews != null ? p.pageViews.toLocaleString('nl-NL') : '—'}</td>
+                <td class="right">${p.uniqueVisitors != null ? p.uniqueVisitors.toLocaleString('nl-NL') : '—'}</td>
+                <td class="right">${p.avgTimeOnPage != null ? fmt(p.avgTimeOnPage, 'Avg Time on Page') : '—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } else {
+    nlfpEl.innerHTML = '';
   }
 
   if (nfpContent.length > 0) {
@@ -991,10 +1037,10 @@ function renderContentSection() {
               <tr>
                 <td><span class="rank-badge ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
                 <td>
-                  <div class="post-name" title="${p.name}">${p.name}</div>
-                  ${p.url ? `<a class="post-link" href="${p.url}" target="_blank">View on site ↗</a>` : ''}
+                  <div class="post-name" title="${escHtml(p.name)}">${escHtml(p.name)}</div>
+                  ${safeUrl(p.url) ? `<a class="post-link" href="${safeUrl(p.url)}" target="_blank" rel="noopener noreferrer">View on site ↗</a>` : ''}
                 </td>
-                <td><span class="type-badge">${p.contentType}</span></td>
+                <td><span class="type-badge">${escHtml(p.contentType)}</span></td>
                 <td class="right">${p.pageViews != null ? p.pageViews.toLocaleString('nl-NL') : '—'}</td>
                 <td class="right">${p.uniqueVisitors != null ? p.uniqueVisitors.toLocaleString('nl-NL') : '—'}</td>
                 <td class="right">${p.avgTimeOnPage != null ? fmt(p.avgTimeOnPage, 'Avg Time on Page') : '—'}</td>
@@ -1014,12 +1060,13 @@ function renderContentSection() {
   linkedinEl.style.display = (showSocial && linkedinPosts.length > 0) ? 'block' : 'none';
   fbEl.style.display = (showSocial && facebookPosts.length > 0) ? 'block' : 'none';
   igEl.style.display = (showSocial && instagramPosts.length > 0) ? 'block' : 'none';
+  nlfpEl.style.display = (showNfp && nlfpPages.length > 0) ? 'block' : 'none';
   nfpEl.style.display = (showNfp && nfpContent.length > 0) ? 'block' : 'none';
   nlEl.style.display = (showNl && newsletters.length > 0) ? 'block' : 'none';
   document.getElementById('content-newsletter-section').style.display = (showNl && newsletters.length > 0) ? 'block' : 'none';
 
   const hasContent = (showSocial && (linkedinPosts.length > 0 || facebookPosts.length > 0 || instagramPosts.length > 0))
-    || (showNfp && nfpContent.length > 0);
+    || (showNfp && (nlfpPages.length > 0 || nfpContent.length > 0));
   document.getElementById('content-section').style.display = hasContent ? 'block' : 'none';
 }
 
@@ -1101,11 +1148,11 @@ function renderDashboard() {
     ? allRecords.filter(r => `${r.year} ${r.quarter}` === prevQuarter)
     : [];
 
-  // Build lookup: platform → metric → value
+  // Build lookup: platform → metric → value (first record wins per platform+metric)
   const prevMap = {};
   for (const r of prevRecs) {
     if (!prevMap[r.platform]) prevMap[r.platform] = {};
-    if (!prevMap[r.platform][r.metric]) prevMap[r.platform][r.metric] = r.result;
+    if (prevMap[r.platform][r.metric] === undefined) prevMap[r.platform][r.metric] = r.result;
   }
 
   // Group current by platform
@@ -1138,23 +1185,41 @@ function renderDashboard() {
     const color = PLATFORM_COLOR[platform] || '#64748B';
     const name = PLATFORM_SHORT[platform] || platform;
     const primaryMetric = PRIMARY_METRIC[platform];
-    const hasWarn = records.some(r => r.warning);
-
     // Primary metric record (aggregate only — no publication filter for non-Issuu)
     const primaryRec = records.find(r => r.metric === primaryMetric && !r.publication) ||
                        records.find(r => r.metric === primaryMetric);
     const primaryVal = primaryRec?.result ?? null;
-    const prevPrimary = prevMap[platform]?.[primaryMetric] ?? null;
     const target = primaryRec?.target ?? null;
 
-    // QoQ change for primary
+    // ⚠ badge: only show if every record for the primary metric is flagged (no clean alternative exists)
+    const primaryRecs = records.filter(r => r.metric === primaryMetric && !r.publication);
+    const hasWarn = primaryRecs.length > 0 && primaryRecs.every(r => r.warning);
+
+    // QoQ change for primary — look at immediate previous quarter first,
+    // then fall back to the nearest earlier quarter that has data for this metric.
+    let prevPrimary = prevMap[platform]?.[primaryMetric] ?? null;
+    let comparedQuarter = prevQuarter;
+    if (prevPrimary === null && primaryVal !== null) {
+      const earlierQuarters = quarters.slice(0, quarters.indexOf(selected)).reverse();
+      for (const pq of earlierQuarters) {
+        const rec = allRecords.find(r =>
+          `${r.year} ${r.quarter}` === pq &&
+          r.platform === platform &&
+          r.metric === primaryMetric &&
+          !r.publication
+        );
+        if (rec) { prevPrimary = rec.result; comparedQuarter = pq; break; }
+      }
+    }
+
     let qoqHtml = '';
     if (prevPrimary !== null && primaryVal !== null) {
       const diff = primaryVal - prevPrimary;
       const sign = diff >= 0 ? '+' : '';
       const cls = diff >= 0 ? 'up' : 'down';
       const arrow = diff >= 0 ? '↑' : '↓';
-      qoqHtml = `<div class="qoq ${cls}">${arrow} ${sign}${fmt(diff, primaryMetric)} vs previous quarter</div>`;
+      const label = comparedQuarter === prevQuarter ? 'previous quarter' : `vs ${comparedQuarter}`;
+      qoqHtml = `<div class="qoq ${cls}">${arrow} ${sign}${fmt(diff, primaryMetric)} vs ${label}</div>`;
     } else if (prevPrimary === null && primaryVal !== null) {
       qoqHtml = `<div class="qoq neutral">No previous quarter data</div>`;
     }
@@ -1353,7 +1418,19 @@ function toggleInsight(idx) {
 }
 
 function escHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function safeUrl(url) {
+  if (!url) return null;
+  try { const u = new URL(url); return u.protocol === 'https:' ? url : null; }
+  catch { return null; }
 }
 
 // ── Trend chart ───────────────────────────────────────
