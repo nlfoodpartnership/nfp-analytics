@@ -1047,45 +1047,52 @@ async function renderQrMap(codes) {
         <text x="20" y="0" font-size="10" fill="#94A3B8" font-family="-apple-system,sans-serif">Top countries by scan volume — darker = more scans, click to explore</text>
       </g>` : '';
 
+    // Non-interactive layers get pointer-events:none so they never swallow clicks
     inner.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;border-radius:8px;" xmlns="http://www.w3.org/2000/svg">
-      <rect width="${W}" height="${H}" fill="#EFF6FF"/>
+      <rect width="${W}" height="${H}" fill="#EFF6FF" pointer-events="none"/>
       ${countryPaths}
-      <path d="${borderD}" fill="none" stroke="#CBD5E1" stroke-width="0.4"/>
-      <path d="${coastD}"  fill="none" stroke="#B0BEC5" stroke-width="0.7"/>
-      ${legendSvg}
+      <path d="${borderD}" fill="none" stroke="#CBD5E1" stroke-width="0.4" pointer-events="none"/>
+      <path d="${coastD}"  fill="none" stroke="#B0BEC5" stroke-width="0.7" pointer-events="none"/>
+      <g pointer-events="none">${legendSvg}</g>
     </svg>`;
 
-    // Click handler — show detail panel
-    const panel       = document.getElementById('qr-country-panel');
-    const panelName   = document.getElementById('qr-panel-country');
-    const panelScans  = document.getElementById('qr-panel-scans');
-    const panelTable  = document.getElementById('qr-panel-table');
-    const panelClose  = document.getElementById('qr-panel-close');
-    const TYPE_COLOR  = { 'Vcard': '#2563EB', 'Website': '#16A34A', 'Publications': '#EA580C' };
+    // Wire up detail panel
+    const panel      = document.getElementById('qr-country-panel');
+    const panelName  = document.getElementById('qr-panel-country');
+    const panelScans = document.getElementById('qr-panel-scans');
+    const panelTable = document.getElementById('qr-panel-table');
+    const panelClose = document.getElementById('qr-panel-close');
+    const TYPE_COLOR = { 'Vcard': '#2563EB', 'Website': '#16A34A', 'Publications': '#EA580C' };
 
     panelClose.onclick = () => { panel.style.display = 'none'; };
 
-    inner.querySelector('svg').addEventListener('click', e => {
-      const path = e.target.closest('[data-country]');
-      if (!path) { panel.style.display = 'none'; return; }
-
-      const country = path.dataset.country;
-      const scans   = parseInt(path.dataset.scans, 10);
-
+    function showCountryPanel(country, scans) {
       panelName.textContent  = country;
       panelScans.textContent = scans.toLocaleString('nl-NL') + ' scan' + (scans !== 1 ? 's' : '') + ' recorded this quarter';
-
-      const rows = codes.map(c => {
-        const color = TYPE_COLOR[c.type] || '#64748B';
-        return `<tr>
-          <td style="padding:6px 10px 6px 0;font-size:13px;font-weight:500;color:#1E293B">${escHtml(c.name)}</td>
-          <td style="padding:6px 10px 6px 0"><span class="type-badge" style="color:${color};background:${color}18;font-size:11px">${escHtml(c.type)}</span></td>
-          <td style="padding:6px 0;text-align:right;font-size:13px;color:#64748B">${(c.totalScans || 0).toLocaleString('nl-NL')} scans total</td>
-        </tr>`;
-      }).join('');
-
-      panelTable.innerHTML = `<table style="width:100%;border-collapse:collapse">${rows}</table>`;
+      panelTable.innerHTML = `<table style="width:100%;border-collapse:collapse">${
+        codes.map(c => {
+          const color = TYPE_COLOR[c.type] || '#64748B';
+          return `<tr>
+            <td style="padding:6px 10px 6px 0;font-size:13px;font-weight:500;color:#1E293B">${escHtml(c.name)}</td>
+            <td style="padding:6px 10px 6px 0"><span class="type-badge" style="color:${color};background:${color}18;font-size:11px">${escHtml(c.type)}</span></td>
+            <td style="padding:6px 0;text-align:right;font-size:13px;color:#64748B">${(c.totalScans || 0).toLocaleString('nl-NL')} scans total</td>
+          </tr>`;
+        }).join('')
+      }</table>`;
       panel.style.display = 'block';
+    }
+
+    // Direct listeners on each highlighted path — reliable, no delegation needed
+    inner.querySelectorAll('path[data-country]').forEach(path => {
+      path.addEventListener('click', e => {
+        e.stopPropagation();
+        showCountryPanel(path.dataset.country, parseInt(path.dataset.scans, 10));
+      });
+    });
+
+    // Clicking elsewhere in the SVG closes the panel
+    inner.querySelector('svg').addEventListener('click', () => {
+      panel.style.display = 'none';
     });
 
   } catch (err) {
