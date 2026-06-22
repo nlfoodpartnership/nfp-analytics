@@ -2116,14 +2116,13 @@ function renderQrInsightCard() {
 
   if (Object.keys(typeScans).length > 1) bullets.push(`By type — ${typeBreakdown}.`);
 
-  return `<div class="insight-card qr-auto">
-    <div style="padding:16px 20px 0">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-        <span class="qr-auto-label">Auto · QR Codes</span>
-        <span class="insight-toggle-title" style="font-size:15px;font-weight:700;color:#1E293B">QR Performance — ${escHtml(quarter)} ${escHtml(year)}</span>
-      </div>
-    </div>
-    <div class="insight-body" style="padding-top:0">
+  return `<div class="insight-card qr-auto" id="insight-qr">
+    <button class="insight-toggle" onclick="toggleInsightQr()" aria-expanded="true">
+      <span class="qr-auto-label">Auto · QR Codes</span>
+      <span class="insight-toggle-title">QR Performance — ${escHtml(quarter)} ${escHtml(year)}</span>
+      <span class="insight-toggle-caret">▼</span>
+    </button>
+    <div class="insight-body">
       <ul>${bullets.map(b => `<li>${b}</li>`).join('')}</ul>
       <div style="font-size:11px;color:#94A3B8;margin-top:4px">Generated from QR data · updates with each quarter</div>
     </div>
@@ -2165,6 +2164,11 @@ function renderInsights() {
 
 function toggleInsight(idx) {
   const card = document.getElementById(`insight-${idx}`);
+  card.classList.toggle('collapsed');
+}
+
+function toggleInsightQr() {
+  const card = document.getElementById('insight-qr');
   card.classList.toggle('collapsed');
 }
 
