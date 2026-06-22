@@ -110,6 +110,29 @@ header {
 #category-nav button:hover { color: #1E293B; }
 #category-nav button.active { color: #2563EB; border-bottom-color: #2563EB; font-weight: 600; }
 
+/* ── Subtab nav (NFP Connects) ── */
+#subtab-nav {
+  background: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+  padding: 0 24px;
+  display: none;
+  gap: 4px;
+}
+#subtab-nav button {
+  padding: 9px 14px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748B;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: color .15s, border-color .15s;
+}
+#subtab-nav button:hover { color: #1E293B; }
+#subtab-nav button.active { color: #0891B2; border-bottom-color: #0891B2; font-weight: 600; }
+
 /* ── Main ── */
 main {
   padding: 24px;
@@ -388,6 +411,45 @@ main {
   color: #94A3B8;
   margin-top: 2px;
 }
+/* ── Downloads section ── */
+.dl-theme-bar-wrap {
+  margin-bottom: 24px;
+}
+.dl-theme-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.dl-theme-label {
+  font-size: 12px;
+  color: #475569;
+  width: 220px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dl-theme-bar-bg {
+  flex: 1;
+  background: #F1F5F9;
+  border-radius: 4px;
+  height: 8px;
+  overflow: hidden;
+}
+.dl-theme-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: #0891B2;
+}
+.dl-theme-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1E293B;
+  width: 40px;
+  text-align: right;
+  flex-shrink: 0;
+}
 .no-content {
   padding: 32px;
   text-align: center;
@@ -587,7 +649,7 @@ main {
 <div id="app" style="display:none">
   <header>
     <span class="logo">NFP <span>Analytics</span></span>
-    <select id="quarter-select" onchange="renderDashboard(); renderContentSection(); renderPublicationsSection(); renderQrSection()"></select>
+    <select id="quarter-select" onchange="renderDashboard(); renderContentSection(); renderPublicationsSection(); renderQrSection(); renderDownloadsSection()"></select>
   </header>
 
   <div id="category-nav">
@@ -597,8 +659,13 @@ main {
     <button data-cat="website" onclick="setCategory(this)">Website</button>
     <button data-cat="publications" onclick="setCategory(this)">Publications</button>
     <button data-cat="podcast" onclick="setCategory(this)">Podcast</button>
-    <button data-cat="qr" onclick="setCategory(this)">QR Codes</button>
+    <button data-cat="nfpconnects" onclick="setCategory(this)">NFP Connects</button>
     <button data-cat="insights" onclick="setCategory(this)">✦ Insights</button>
+  </div>
+
+  <div id="subtab-nav" style="display:none">
+    <button class="active" data-sub="qr" onclick="setSubtab(this)">QR Codes</button>
+    <button data-sub="downloads" onclick="setSubtab(this)">Downloads</button>
   </div>
 
   <main>
@@ -646,6 +713,10 @@ main {
 
   <div id="qr-section" style="display:none; padding:0 24px; max-width:1280px; margin:0 auto 32px;">
     <div id="qr-content"></div>
+  </div>
+
+  <div id="downloads-section" style="display:none; padding:0 24px; max-width:1280px; margin:0 auto 32px;">
+    <div id="downloads-content"></div>
   </div>
 </div>
 
@@ -708,6 +779,7 @@ const PLATFORM_ORDER = [
 let allRecords = [];
 let contentRecords = [];
 let qrRecords = [];
+let downloadsRecords = [];
 let insightSections = [];
 let insightsLoaded = false;
 let authToken = sessionStorage.getItem('nfp_auth_token') || '';
@@ -779,9 +851,10 @@ async function loadData() {
     document.getElementById('trend-section').style.display = 'block';
     renderPublicationsSection();
 
-    // Load content and QR data in parallel
+    // Load secondary datasets in parallel
     loadContentData();
     loadQrData();
+    loadDownloadsData();
   } catch (err) {
     showError('Failed to load data: ' + err.message);
   }
@@ -818,6 +891,20 @@ async function loadQrData() {
     if (!data.configured || data.error) return;
     qrRecords = data.records || [];
     renderQrSection();
+  } catch {}
+}
+
+async function loadDownloadsData() {
+  try {
+    const res = await fetch('/api/downloads', {
+      headers: { 'X-Dashboard-Token': authToken },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.configured || data.error) return;
+    downloadsRecords = data.records || [];
+    renderDownloadsSection();
+    renderDashboard(); // refresh compact card in All tab
   } catch {}
 }
 
@@ -1116,6 +1203,157 @@ async function renderQrMap(codes) {
     console.error('QR map error:', err);
     inner.innerHTML = '<span style="color:#94A3B8;font-size:13px;">Map unavailable</span>';
   }
+}
+
+// ── Downloads ─────────────────────────────────────────
+function renderDownloadsSection() {
+  const el = document.getElementById('downloads-content');
+  if (!el) return;
+  const selected = getSelectedQuarter();
+  const [year, quarter] = selected.split(' ');
+
+  const docs = downloadsRecords
+    .filter(r => r.year === year && r.quarter === quarter)
+    .sort((a, b) => (b.downloads || 0) - (a.downloads || 0));
+
+  if (docs.length === 0) {
+    el.innerHTML = '<div class="empty-state">No download data for this quarter.</div>';
+    return;
+  }
+
+  const totalDl   = docs.reduce((s, r) => s + (r.downloads || 0), 0);
+  const topDoc    = docs[0];
+
+  // Theme totals
+  const themeMap = {};
+  for (const d of docs) {
+    if (d.theme) themeMap[d.theme] = (themeMap[d.theme] || 0) + (d.downloads || 0);
+  }
+  const themes = Object.entries(themeMap).sort((a, b) => b[1] - a[1]);
+  const maxTheme = themes[0]?.[1] || 1;
+  const topTheme = themes[0]?.[0] || '—';
+
+  // Type colours
+  const TYPE_COLOR = {
+    'Report': '#2563EB', 'Brief': '#16A34A', 'Factsheet': '#0891B2',
+    'Presentation': '#7C3AED', 'Declaration': '#DC2626', 'Magazine': '#D97706',
+    'White Paper': '#0F766E', 'Toolkit': '#DB2777', 'Other': '#64748B',
+  };
+
+  el.innerHTML = `
+    <div class="qr-stat-strip">
+      <div class="qr-stat">
+        <div class="qr-stat-value">${totalDl.toLocaleString('nl-NL')}</div>
+        <div class="qr-stat-label">Total downloads</div>
+      </div>
+      <div class="qr-stat">
+        <div class="qr-stat-value">${docs.length}</div>
+        <div class="qr-stat-label">Documents</div>
+      </div>
+      <div class="qr-stat">
+        <div class="qr-stat-value" style="font-size:16px">${escHtml(topTheme)}</div>
+        <div class="qr-stat-label">Top theme</div>
+      </div>
+    </div>
+
+    <div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:20px;margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:700;color:#1E293B;margin-bottom:16px;">Downloads by partnership / community</div>
+      <div class="dl-theme-bar-wrap">
+        ${themes.map(([theme, count]) => `
+          <div class="dl-theme-row">
+            <div class="dl-theme-label" title="${escHtml(theme)}">${escHtml(theme)}</div>
+            <div class="dl-theme-bar-bg">
+              <div class="dl-theme-bar-fill" style="width:${Math.round((count/maxTheme)*100)}%"></div>
+            </div>
+            <div class="dl-theme-count">${count}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="content-table-wrap">
+      <table class="content-table">
+        <thead>
+          <tr>
+            <th style="width:32px">#</th>
+            <th>Document</th>
+            <th>Type</th>
+            <th>Theme</th>
+            <th style="width:60px">Ext</th>
+            <th class="right">Downloads</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${docs.map((d, i) => {
+            const color = TYPE_COLOR[d.documentType] || '#64748B';
+            return `<tr>
+              <td><span class="rank-badge ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
+              <td><div class="post-name">${escHtml(d.name)}</div></td>
+              <td><span class="type-badge" style="color:${color};background:${color}18">${escHtml(d.documentType)}</span></td>
+              <td class="muted" style="font-size:12px">${escHtml(d.theme)}</td>
+              <td class="muted" style="font-size:12px;text-align:center">${d.external === 'Yes' ? '↗' : ''}</td>
+              <td class="right"><strong>${(d.downloads || 0).toLocaleString('nl-NL')}</strong></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderDownloadsCompactCard(selected, prevQuarter) {
+  if (!downloadsRecords.length) return '';
+  const [year, quarter] = selected.split(' ');
+  const docs = downloadsRecords.filter(r => r.year === year && r.quarter === quarter);
+  if (!docs.length) return '';
+
+  const totalDl = docs.reduce((s, r) => s + (r.downloads || 0), 0);
+  const topDoc  = [...docs].sort((a, b) => (b.downloads || 0) - (a.downloads || 0))[0];
+
+  // QoQ
+  let qoqHtml = '';
+  if (prevQuarter) {
+    const [py, pq] = prevQuarter.split(' ');
+    const prevDocs = downloadsRecords.filter(r => r.year === py && r.quarter === pq);
+    if (prevDocs.length) {
+      const prevTotal = prevDocs.reduce((s, r) => s + (r.downloads || 0), 0);
+      if (prevTotal > 0) {
+        const pct = Math.round(((totalDl - prevTotal) / prevTotal) * 100);
+        const dir = pct > 0 ? 'up' : pct < 0 ? 'down' : 'neutral';
+        qoqHtml = `<div class="metric-qoq ${dir}">${pct > 0 ? '+' : ''}${pct}% vs previous quarter</div>`;
+      }
+    }
+  }
+
+  // Top theme
+  const themeMap = {};
+  for (const d of docs) if (d.theme) themeMap[d.theme] = (themeMap[d.theme] || 0) + (d.downloads || 0);
+  const topTheme = Object.entries(themeMap).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+
+  const color = '#0891B2';
+  return `<div class="platform-card">
+    <div class="card-header" style="border-top:3px solid ${color}">
+      <div class="platform-dot" style="background:${color}"></div>
+      <span class="platform-name">Downloads</span>
+    </div>
+    <div class="primary-metric">
+      <div class="primary-label">Unique downloads</div>
+      <div class="primary-value" style="color:${color}">${totalDl.toLocaleString('nl-NL')}</div>
+      ${qoqHtml}
+    </div>
+    <div class="secondary-metrics">
+      <div class="metric-row">
+        <span class="metric-label">Top document</span>
+        <span class="metric-value">${escHtml(topDoc.name.length > 28 ? topDoc.name.slice(0,28)+'…' : topDoc.name)}</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Documents tracked</span>
+        <span class="metric-value">${docs.length}</span>
+      </div>
+      ${topTheme ? `<div class="metric-row">
+        <span class="metric-label">Top theme</span>
+        <span class="metric-value">${escHtml(topTheme)}</span>
+      </div>` : ''}
+    </div>
+  </div>`;
 }
 
 function renderContentSection() {
@@ -1454,29 +1692,45 @@ function getSelectedQuarter() {
 }
 
 // ── Category filter ──────────────────────────────────
+let activeSubtab = 'qr';
+
+function setSubtab(btn) {
+  document.querySelectorAll('#subtab-nav button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeSubtab = btn.dataset.sub;
+  document.getElementById('qr-section').style.display = activeSubtab === 'qr' ? 'block' : 'none';
+  document.getElementById('downloads-section').style.display = activeSubtab === 'downloads' ? 'block' : 'none';
+  if (activeSubtab === 'qr') renderQrSection();
+  if (activeSubtab === 'downloads') renderDownloadsSection();
+}
+
 function setCategory(btn) {
   document.querySelectorAll('#category-nav button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   activeCategory = btn.dataset.cat;
 
-  const isInsights = activeCategory === 'insights';
-  const isQr = activeCategory === 'qr';
+  const isInsights    = activeCategory === 'insights';
+  const isNfpConnects = activeCategory === 'nfpconnects';
+  const isSpecial     = isInsights || isNfpConnects;
 
+  document.getElementById('subtab-nav').style.display = isNfpConnects ? 'flex' : 'none';
   document.getElementById('quarter-select').style.display = isInsights ? 'none' : '';
   document.getElementById('insights-section').style.display = isInsights ? 'block' : 'none';
-  document.getElementById('qr-section').style.display = isQr ? 'block' : 'none';
-  document.getElementById('trend-section').style.display = (isInsights || isQr) ? 'none' : (allRecords.length ? 'block' : 'none');
+  document.getElementById('qr-section').style.display = (isNfpConnects && activeSubtab === 'qr') ? 'block' : 'none';
+  document.getElementById('downloads-section').style.display = (isNfpConnects && activeSubtab === 'downloads') ? 'block' : 'none';
+  document.getElementById('trend-section').style.display = isSpecial ? 'none' : (allRecords.length ? 'block' : 'none');
 
   if (isInsights) {
     if (!insightsLoaded) loadInsightsData();
     return;
   }
-  if (isQr) {
+  if (isNfpConnects) {
     document.getElementById('cards-grid').style.display = 'none';
     document.getElementById('content-section').style.display = 'none';
     document.getElementById('content-newsletter-section').style.display = 'none';
     document.getElementById('content-publications-section').style.display = 'none';
-    renderQrSection();
+    if (activeSubtab === 'qr') renderQrSection();
+    if (activeSubtab === 'downloads') renderDownloadsSection();
     return;
   }
   renderDashboard();
@@ -1552,7 +1806,8 @@ function renderDashboard() {
     return;
   }
 
-  const qrCompact = (activeCategory === 'all') ? renderQrCompactCard(selected, prevQuarter) : '';
+  const qrCompact = activeCategory === 'all' ? renderQrCompactCard(selected, prevQuarter) : '';
+  const dlCompact = activeCategory === 'all' ? renderDownloadsCompactCard(selected, prevQuarter) : '';
 
   grid.innerHTML = platforms.map(platform => {
     const records = byPlatform[platform];
@@ -1665,7 +1920,7 @@ function renderDashboard() {
       ${secondaryHtml}
       ${pubHtml}
     </div>`;
-  }).join('') + qrCompact;
+  }).join('') + qrCompact + dlCompact;
 }
 
 function renderQrCompactCard(selected, prevQuarter) {
