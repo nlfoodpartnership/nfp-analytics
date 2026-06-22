@@ -844,6 +844,9 @@ function renderQrSection() {
         <div class="qr-stat-label">Top code — ${top.totalScans.toLocaleString('nl-NL')} scans</div>
       </div>
     </div>
+    <div id="qr-map-wrap" style="margin:24px 0;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:16px 16px 12px;">
+      <div style="font-size:11px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">Scan geography</div>
+    </div>
     <div class="content-table-wrap">
       <table class="content-table">
         <thead>
@@ -874,6 +877,125 @@ function renderQrSection() {
         </tbody>
       </table>
     </div>`;
+
+  renderQrMap(codes);
+}
+
+function renderQrMap(codes) {
+  const wrap = document.getElementById('qr-map-wrap');
+  if (!wrap) return;
+
+  const W = 960, H = 480;
+
+  function px(lat, lng) {
+    return [Math.round((lng + 180) / 360 * W), Math.round((90 - lat) / 180 * H)];
+  }
+
+  function poly(pts) {
+    return pts.map(([lng, lat], i) => {
+      const [x, y] = px(lat, lng);
+      return (i === 0 ? 'M' : 'L') + x + ',' + y;
+    }).join(' ') + ' Z';
+  }
+
+  // Simplified continent shapes as [lng, lat] polygon vertices
+  const SHAPES = [
+    // Africa
+    [[-5,37],[10,37],[25,32],[34,31],[37,22],[43,11],[51,11],[43,0],[40,-11],[35,-26],[28,-34],[18,-34],[12,-17],[9,-4],[2,5],[-8,5],[-15,10],[-17,15],[-17,21],[-1,36]],
+    // Europe mainland + Scandinavia
+    [[-9,37],[0,38],[9,44],[15,44],[20,40],[26,38],[28,41],[22,44],[20,50],[24,56],[30,59],[28,70],[15,70],[5,58],[10,57],[8,55],[5,54],[8,52],[2,51],[-5,48],[-2,44],[-9,43]],
+    // Asia (mainland, incl. Middle East, India, SE Asia)
+    [[27,72],[180,72],[165,60],[145,43],[130,33],[121,24],[104,1],[80,8],[60,25],[45,12],[38,37],[45,42],[60,43],[80,45],[100,55],[60,68]],
+    // North America
+    [[-168,71],[-140,60],[-124,49],[-120,34],[-110,23],[-90,16],[-77,8],[-82,24],[-76,35],[-70,43],[-66,44],[-53,47],[-55,50],[-55,60],[-80,70],[-100,72],[-140,72]],
+    // South America
+    [[-80,8],[-61,11],[-36,-5],[-35,-10],[-40,-22],[-45,-23],[-52,-32],[-58,-38],[-67,-55],[-71,-45],[-76,-35],[-80,-4]],
+    // Australia
+    [[116,-32],[122,-34],[138,-35],[151,-34],[151,-24],[145,-15],[135,-12],[124,-15],[114,-22]],
+    // Greenland
+    [[-73,76],[-20,76],[-20,60],[-45,60]],
+    // Great Britain (simplified)
+    [[-5,50],[-5,58],[-2,58],[2,52]],
+    // Iceland
+    [[-24,64],[-13,64],[-13,66],[-24,66]],
+    // Madagascar
+    [[44,-12],[51,-12],[51,-26],[44,-26]],
+    // New Zealand (South Island approx)
+    [[166,-46],[174,-41],[172,-34],[169,-46]],
+  ];
+
+  const landSvg = SHAPES.map(pts =>
+    `<path d="${poly(pts)}" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="0.5"/>`
+  ).join('');
+
+  // Country name → [lat, lng] centroid
+  const CENTROIDS = {
+    'Netherlands': [52.13, 5.29], 'Belgium': [50.50, 4.47], 'Germany': [51.17, 10.45],
+    'France': [46.23, 2.21], 'United Kingdom': [55.38, -3.44], 'UK': [55.38, -3.44],
+    'Sweden': [60.13, 18.64], 'Norway': [60.47, 8.47], 'Denmark': [56.26, 9.50],
+    'Finland': [61.92, 25.75], 'Poland': [51.92, 19.15], 'Spain': [40.46, -3.75],
+    'Italy': [41.87, 12.57], 'Switzerland': [46.82, 8.23], 'Austria': [47.52, 14.55],
+    'Portugal': [39.40, -8.22], 'Greece': [39.07, 21.82], 'Czechia': [49.82, 15.47],
+    'Czech Republic': [49.82, 15.47], 'Hungary': [47.16, 19.50], 'Romania': [45.94, 24.97],
+    'Ireland': [53.41, -8.24], 'Luxembourg': [49.82, 6.13], 'Serbia': [44.02, 21.01],
+    'Croatia': [45.10, 15.20], 'Slovakia': [48.67, 19.70], 'Slovenia': [46.15, 14.99],
+    // Africa
+    'Kenya': [0.02, 37.91], 'Ethiopia': [9.15, 40.49], 'South Africa': [-28.48, 24.68],
+    'Nigeria': [9.08, 8.68], 'Ghana': [7.95, -1.02], 'Rwanda': [-1.94, 29.87],
+    'Uganda': [1.37, 32.29], 'Tanzania': [-6.37, 34.89], 'Senegal': [14.50, -14.45],
+    'Cameroon': [3.85, 11.52], 'Ivory Coast': [7.54, -5.55], "Côte d'Ivoire": [7.54, -5.55],
+    'Mozambique': [-18.67, 35.53], 'Zambia': [-13.13, 27.85], 'Zimbabwe': [-19.02, 29.15],
+    'Democratic Republic of Congo': [-4.04, 21.76], 'DRC': [-4.04, 21.76],
+    'Morocco': [31.79, -7.09], 'Egypt': [26.82, 30.80], 'Angola': [-11.20, 17.87],
+    'Malawi': [-13.25, 34.30], 'Namibia': [-22.96, 18.49], 'Botswana': [-22.33, 24.68],
+    'Somalia': [5.15, 46.20], 'Sudan': [12.86, 30.22], 'Mali': [17.57, -3.99],
+    'Niger': [17.61, 8.08], 'Chad': [15.45, 18.73], 'Togo': [8.62, 0.82],
+    'Benin': [9.31, 2.32], 'Gabon': [-0.80, 11.61], 'Madagascar': [-18.77, 46.87],
+    'Tunisia': [33.89, 9.54], 'Algeria': [28.03, 1.66], 'Libya': [26.34, 17.23],
+    'Burkina Faso': [12.36, -1.56], 'Sierra Leone': [8.46, -11.78], 'Liberia': [6.43, -9.43],
+    // Americas
+    'United States': [37.09, -95.71], 'USA': [37.09, -95.71], 'Canada': [56.13, -106.35],
+    'Brazil': [-14.24, -51.93], 'Mexico': [23.63, -102.55], 'Colombia': [4.57, -74.30],
+    'Peru': [-9.19, -75.02], 'Chile': [-35.68, -71.54], 'Argentina': [-38.42, -63.62],
+    'Barbados': [13.19, -59.54],
+    // Asia & Oceania
+    'India': [20.59, 78.96], 'China': [35.86, 104.19], 'Japan': [36.20, 138.25],
+    'Turkey': [38.96, 35.24], 'UAE': [23.42, 53.85], 'Saudi Arabia': [23.89, 45.08],
+    'Israel': [31.05, 34.85], 'Australia': [-25.27, 133.78], 'New Zealand': [-40.90, 174.89],
+    'Indonesia': [-0.79, 113.92], 'Pakistan': [30.38, 69.35], 'Bangladesh': [23.68, 90.36],
+  };
+
+  // Aggregate scans by country
+  const countryScans = {};
+  for (const c of codes) {
+    if (c.topCountry) countryScans[c.topCountry] = (countryScans[c.topCountry] || 0) + (c.totalScans || 0);
+  }
+
+  const maxScans = Math.max(1, ...Object.values(countryScans));
+  const hasData = Object.keys(countryScans).length > 0;
+
+  const dotsSvg = Object.entries(countryScans).map(([country, scans]) => {
+    const c = CENTROIDS[country];
+    if (!c) return '';
+    const [x, y] = px(c[0], c[1]);
+    const r = Math.round(5 + (scans / maxScans) * 16);
+    return `<circle cx="${x}" cy="${y}" r="${r}" fill="rgba(37,99,235,0.82)" stroke="white" stroke-width="2" style="cursor:default"><title>${escHtml(country)}: ${scans.toLocaleString('nl-NL')} scan${scans !== 1 ? 's' : ''}</title></circle>`;
+  }).filter(Boolean).join('');
+
+  const legendSvg = hasData ? `
+    <g transform="translate(16,${H - 14})">
+      <circle cx="6" cy="-1" r="5" fill="rgba(37,99,235,0.82)" stroke="white" stroke-width="1.5"/>
+      <text x="16" y="3" font-size="10" fill="#94A3B8" font-family="-apple-system,sans-serif">Country with scans this quarter (hover for details)</text>
+    </g>` : '';
+
+  const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;border-radius:8px;" xmlns="http://www.w3.org/2000/svg">
+    <rect width="${W}" height="${H}" fill="#EFF6FF"/>
+    ${landSvg}
+    ${dotsSvg}
+    ${legendSvg}
+  </svg>`;
+
+  wrap.insertAdjacentHTML('beforeend', svg);
 }
 
 function renderContentSection() {
