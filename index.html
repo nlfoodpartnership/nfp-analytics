@@ -879,6 +879,18 @@ function renderQrSection() {
       <div id="qr-map-inner" style="min-height:180px;display:flex;align-items:center;justify-content:center;">
         <span style="color:#94A3B8;font-size:13px;">Loading map…</span>
       </div>
+      <div id="qr-country-panel" style="display:none;margin-top:12px;background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+          <div>
+            <div id="qr-panel-country" style="font-weight:600;font-size:15px;color:#1E293B;"></div>
+            <div id="qr-panel-scans" style="font-size:12px;color:#64748B;margin-top:2px;"></div>
+          </div>
+          <button id="qr-panel-close" style="background:none;border:none;cursor:pointer;color:#94A3B8;font-size:18px;line-height:1;padding:0 0 0 12px;">✕</button>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:#64748B;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">Active QR codes this quarter</div>
+        <div id="qr-panel-table"></div>
+        <div style="font-size:11px;color:#94A3B8;margin-top:10px;">Country totals are quarter-wide — all active codes contributed to this figure.</div>
+      </div>
     </div>`;
 
   renderQrMap(codes);
@@ -1017,9 +1029,9 @@ async function renderQrMap(codes) {
       if (!d) return '';
       if (scans > 0) {
         const alpha = (0.35 + (scans / maxScans) * 0.65).toFixed(2);
-        const name = escHtml(isoName[iso] || '');
+        const rawName = isoName[iso] || '';
         const label = scans.toLocaleString('nl-NL') + ' scan' + (scans !== 1 ? 's' : '');
-        return `<path d="${d}" fill="rgba(37,99,235,${alpha})" stroke="rgba(37,99,235,0.3)" stroke-width="0.4"><title>${name}: ${label}</title></path>`;
+        return `<path d="${d}" fill="rgba(37,99,235,${alpha})" stroke="rgba(37,99,235,0.3)" stroke-width="0.4" style="cursor:pointer" data-country="${escHtml(rawName)}" data-scans="${scans}"><title>${escHtml(rawName)}: ${label} — click for details</title></path>`;
       }
       return `<path d="${d}" fill="#E2E8F0"/>`;
     }).join('');
@@ -1032,7 +1044,7 @@ async function renderQrMap(codes) {
     const legendSvg = hasHighlight ? `
       <g transform="translate(12,${H - 12})">
         <rect x="0" y="-9" width="14" height="10" rx="1" fill="rgba(37,99,235,0.7)"/>
-        <text x="20" y="0" font-size="10" fill="#94A3B8" font-family="-apple-system,sans-serif">Top countries by scan volume — darker = more scans (hover for count)</text>
+        <text x="20" y="0" font-size="10" fill="#94A3B8" font-family="-apple-system,sans-serif">Top countries by scan volume — darker = more scans, click to explore</text>
       </g>` : '';
 
     inner.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;border-radius:8px;" xmlns="http://www.w3.org/2000/svg">
@@ -1042,6 +1054,39 @@ async function renderQrMap(codes) {
       <path d="${coastD}"  fill="none" stroke="#B0BEC5" stroke-width="0.7"/>
       ${legendSvg}
     </svg>`;
+
+    // Click handler — show detail panel
+    const panel       = document.getElementById('qr-country-panel');
+    const panelName   = document.getElementById('qr-panel-country');
+    const panelScans  = document.getElementById('qr-panel-scans');
+    const panelTable  = document.getElementById('qr-panel-table');
+    const panelClose  = document.getElementById('qr-panel-close');
+    const TYPE_COLOR  = { 'Vcard': '#2563EB', 'Website': '#16A34A', 'Publications': '#EA580C' };
+
+    panelClose.onclick = () => { panel.style.display = 'none'; };
+
+    inner.querySelector('svg').addEventListener('click', e => {
+      const path = e.target.closest('[data-country]');
+      if (!path) { panel.style.display = 'none'; return; }
+
+      const country = path.dataset.country;
+      const scans   = parseInt(path.dataset.scans, 10);
+
+      panelName.textContent  = country;
+      panelScans.textContent = scans.toLocaleString('nl-NL') + ' scan' + (scans !== 1 ? 's' : '') + ' recorded this quarter';
+
+      const rows = codes.map(c => {
+        const color = TYPE_COLOR[c.type] || '#64748B';
+        return `<tr>
+          <td style="padding:6px 10px 6px 0;font-size:13px;font-weight:500;color:#1E293B">${escHtml(c.name)}</td>
+          <td style="padding:6px 10px 6px 0"><span class="type-badge" style="color:${color};background:${color}18;font-size:11px">${escHtml(c.type)}</span></td>
+          <td style="padding:6px 0;text-align:right;font-size:13px;color:#64748B">${(c.totalScans || 0).toLocaleString('nl-NL')} scans total</td>
+        </tr>`;
+      }).join('');
+
+      panelTable.innerHTML = `<table style="width:100%;border-collapse:collapse">${rows}</table>`;
+      panel.style.display = 'block';
+    });
 
   } catch (err) {
     console.error('QR map error:', err);
