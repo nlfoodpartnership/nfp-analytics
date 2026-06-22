@@ -361,6 +361,33 @@ main {
   background: #F1F5F9;
   color: #64748B;
 }
+.qr-stat-strip {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.qr-stat {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 14px 20px;
+  min-width: 160px;
+  flex: 1;
+}
+.qr-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1E293B;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.qr-stat-label {
+  font-size: 12px;
+  color: #94A3B8;
+  margin-top: 2px;
+}
 .no-content {
   padding: 32px;
   text-align: center;
@@ -543,7 +570,7 @@ main {
 <div id="app" style="display:none">
   <header>
     <span class="logo">NFP <span>Analytics</span></span>
-    <select id="quarter-select" onchange="renderDashboard(); renderContentSection(); renderPublicationsSection()"></select>
+    <select id="quarter-select" onchange="renderDashboard(); renderContentSection(); renderPublicationsSection(); renderQrSection()"></select>
   </header>
 
   <div id="category-nav">
@@ -553,6 +580,7 @@ main {
     <button data-cat="website" onclick="setCategory(this)">Website</button>
     <button data-cat="publications" onclick="setCategory(this)">Publications</button>
     <button data-cat="podcast" onclick="setCategory(this)">Podcast</button>
+    <button data-cat="qr" onclick="setCategory(this)">QR Codes</button>
     <button data-cat="insights" onclick="setCategory(this)">✦ Insights</button>
   </div>
 
@@ -597,6 +625,10 @@ main {
 
   <div id="content-publications-section" style="display:none">
     <div id="content-publications" class="content-block"></div>
+  </div>
+
+  <div id="qr-section" style="display:none; padding:0 24px; max-width:1280px; margin:0 auto 32px;">
+    <div id="qr-content"></div>
   </div>
 </div>
 
@@ -658,6 +690,7 @@ const PLATFORM_ORDER = [
 // ── State ──────────────────────────────────────────────
 let allRecords = [];
 let contentRecords = [];
+let qrRecords = [];
 let insightSections = [];
 let insightsLoaded = false;
 let authToken = sessionStorage.getItem('nfp_auth_token') || '';
@@ -729,8 +762,9 @@ async function loadData() {
     document.getElementById('trend-section').style.display = 'block';
     renderPublicationsSection();
 
-    // Load content performance data in parallel
+    // Load content and QR data in parallel
     loadContentData();
+    loadQrData();
   } catch (err) {
     showError('Failed to load data: ' + err.message);
   }
@@ -755,6 +789,91 @@ async function loadContentData() {
     contentRecords = data.records || [];
     renderContentSection();
   } catch {}
+}
+
+async function loadQrData() {
+  try {
+    const res = await fetch('/api/qr', {
+      headers: { 'X-Dashboard-Token': authToken },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.configured || data.error) return;
+    qrRecords = data.records || [];
+    renderQrSection();
+  } catch {}
+}
+
+function renderQrSection() {
+  const el = document.getElementById('qr-content');
+  const selected = getSelectedQuarter();
+  const [year, quarter] = selected.split(' ');
+
+  const codes = qrRecords
+    .filter(r => r.year === year && r.quarter === quarter)
+    .sort((a, b) => (b.totalScans || 0) - (a.totalScans || 0));
+
+  if (codes.length === 0) {
+    el.innerHTML = '<div class="empty-state">No QR code data for this quarter.</div>';
+    return;
+  }
+
+  const totalScans = codes.reduce((s, r) => s + (r.totalScans || 0), 0);
+  const top = codes[0];
+
+  const TYPE_COLOR = { 'Vcard': '#2563EB', 'Website': '#16A34A', 'Publications': '#EA580C' };
+
+  function domainLabel(url) {
+    if (!url) return '';
+    try { return new URL(url).hostname.replace(/^www\./, ''); }
+    catch { return url; }
+  }
+
+  el.innerHTML = `
+    <div class="qr-stat-strip">
+      <div class="qr-stat">
+        <div class="qr-stat-value">${totalScans.toLocaleString('nl-NL')}</div>
+        <div class="qr-stat-label">Total scans</div>
+      </div>
+      <div class="qr-stat">
+        <div class="qr-stat-value">${codes.length}</div>
+        <div class="qr-stat-label">Active codes</div>
+      </div>
+      <div class="qr-stat">
+        <div class="qr-stat-value">${escHtml(top.name)}</div>
+        <div class="qr-stat-label">Top code — ${top.totalScans.toLocaleString('nl-NL')} scans</div>
+      </div>
+    </div>
+    <div class="content-table-wrap">
+      <table class="content-table">
+        <thead>
+          <tr>
+            <th style="width:32px">#</th>
+            <th>QR Code</th>
+            <th>Type</th>
+            <th>Links to</th>
+            <th class="right">Scans</th>
+            <th>Top Country</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${codes.map((r, i) => {
+            const color = TYPE_COLOR[r.type] || '#64748B';
+            const safe = safeUrl(r.linksTo);
+            return `<tr>
+              <td><span class="rank-badge ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
+              <td><div class="post-name">${escHtml(r.name)}</div></td>
+              <td><span class="type-badge" style="color:${color};background:${color}18">${escHtml(r.type)}</span></td>
+              <td>${safe ? `<a class="post-link" href="${safe}" target="_blank" rel="noopener noreferrer">${escHtml(domainLabel(r.linksTo))} ↗</a>` : (r.linksTo ? escHtml(domainLabel(r.linksTo)) : '—')}</td>
+              <td class="right"><strong>${r.totalScans != null ? r.totalScans.toLocaleString('nl-NL') : '—'}</strong></td>
+              <td class="muted">${escHtml(r.topCountry)}</td>
+              <td class="muted">${escHtml(r.notes)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
 }
 
 function renderContentSection() {
@@ -1099,12 +1218,23 @@ function setCategory(btn) {
   activeCategory = btn.dataset.cat;
 
   const isInsights = activeCategory === 'insights';
+  const isQr = activeCategory === 'qr';
+
   document.getElementById('quarter-select').style.display = isInsights ? 'none' : '';
   document.getElementById('insights-section').style.display = isInsights ? 'block' : 'none';
-  document.getElementById('trend-section').style.display = isInsights ? 'none' : (allRecords.length ? 'block' : 'none');
+  document.getElementById('qr-section').style.display = isQr ? 'block' : 'none';
+  document.getElementById('trend-section').style.display = (isInsights || isQr) ? 'none' : (allRecords.length ? 'block' : 'none');
 
   if (isInsights) {
     if (!insightsLoaded) loadInsightsData();
+    return;
+  }
+  if (isQr) {
+    document.getElementById('cards-grid').style.display = 'none';
+    document.getElementById('content-section').style.display = 'none';
+    document.getElementById('content-newsletter-section').style.display = 'none';
+    document.getElementById('content-publications-section').style.display = 'none';
+    renderQrSection();
     return;
   }
   renderDashboard();
@@ -1185,14 +1315,17 @@ function renderDashboard() {
     const color = PLATFORM_COLOR[platform] || '#64748B';
     const name = PLATFORM_SHORT[platform] || platform;
     const primaryMetric = PRIMARY_METRIC[platform];
-    // Primary metric record (aggregate only — no publication filter for non-Issuu)
-    const primaryRec = records.find(r => r.metric === primaryMetric && !r.publication) ||
-                       records.find(r => r.metric === primaryMetric);
+    // Primary metric record: when multiple records exist for the same metric (e.g. YouTube total vs gained),
+    // pick the highest result — total subscriber/follower counts are always larger than per-period gained counts.
+    const primaryRecs = records.filter(r => r.metric === primaryMetric && !r.publication)
+      .sort((a, b) => (b.result || 0) - (a.result || 0));
+    const primaryRec = primaryRecs[0] ||
+      [...records.filter(r => r.metric === primaryMetric)]
+        .sort((a, b) => (b.result || 0) - (a.result || 0))[0];
     const primaryVal = primaryRec?.result ?? null;
     const target = primaryRec?.target ?? null;
 
     // ⚠ badge: only show if every record for the primary metric is flagged (no clean alternative exists)
-    const primaryRecs = records.filter(r => r.metric === primaryMetric && !r.publication);
     const hasWarn = primaryRecs.length > 0 && primaryRecs.every(r => r.warning);
 
     // QoQ change for primary — look at immediate previous quarter first,
