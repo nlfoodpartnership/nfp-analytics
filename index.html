@@ -853,7 +853,7 @@ function renderQrSection() {
             <th>Type</th>
             <th>Links to</th>
             <th class="right">Scans</th>
-            <th>Top Country</th>
+            <th>Top Countries</th>
             <th>Notes</th>
           </tr>
         </thead>
@@ -867,7 +867,7 @@ function renderQrSection() {
               <td><span class="type-badge" style="color:${color};background:${color}18">${escHtml(r.type)}</span></td>
               <td>${safe ? `<a class="post-link" href="${safe}" target="_blank" rel="noopener noreferrer">${escHtml(domainLabel(r.linksTo))} ↗</a>` : (r.linksTo ? escHtml(domainLabel(r.linksTo)) : '—')}</td>
               <td class="right"><strong>${r.totalScans != null ? r.totalScans.toLocaleString('nl-NL') : '—'}</strong></td>
-              <td class="muted">${escHtml(r.topCountry)}</td>
+              <td class="muted" style="font-size:12px">${escHtml(r.topCountries)}</td>
               <td class="muted">${escHtml(r.notes)}</td>
             </tr>`;
           }).join('')}
@@ -928,17 +928,31 @@ async function renderQrMap(codes) {
     'Philippines': 608, 'Vietnam': 704, 'Thailand': 764, 'Malaysia': 458,
   };
 
-  // Build ISO numeric → scans map
+  // Parse "Country (n), Country (n), …" strings from all codes, keep max count per country
+  // (all codes share the same quarter-level top-countries field, so we deduplicate with max)
+  const countryMax = {};
+  const re = /([^,(]+?)\s*\((\d+)\)/g;
+  for (const code of codes) {
+    if (!code.topCountries) continue;
+    let m;
+    re.lastIndex = 0;
+    while ((m = re.exec(code.topCountries)) !== null) {
+      const name = m[1].trim();
+      const count = parseInt(m[2], 10);
+      if (!countryMax[name] || count > countryMax[name]) countryMax[name] = count;
+    }
+  }
+
+  // Map country names → ISO numeric
   const isoScans = {};
   const isoName = {};
   let maxScans = 1;
-  for (const code of codes) {
-    if (!code.topCountry) continue;
-    const iso = NAME_TO_ISO[code.topCountry];
+  for (const [name, count] of Object.entries(countryMax)) {
+    const iso = NAME_TO_ISO[name];
     if (iso) {
-      isoScans[iso] = (isoScans[iso] || 0) + (code.totalScans || 0);
-      isoName[iso] = code.topCountry;
-      if (isoScans[iso] > maxScans) maxScans = isoScans[iso];
+      isoScans[iso] = count;
+      isoName[iso] = name;
+      if (count > maxScans) maxScans = count;
     }
   }
 
@@ -1018,7 +1032,7 @@ async function renderQrMap(codes) {
     const legendSvg = hasHighlight ? `
       <g transform="translate(12,${H - 12})">
         <rect x="0" y="-9" width="14" height="10" rx="1" fill="rgba(37,99,235,0.7)"/>
-        <text x="20" y="0" font-size="10" fill="#94A3B8" font-family="-apple-system,sans-serif">Countries with scans (hover for details)</text>
+        <text x="20" y="0" font-size="10" fill="#94A3B8" font-family="-apple-system,sans-serif">Top countries by scan volume — darker = more scans (hover for count)</text>
       </g>` : '';
 
     inner.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;border-radius:8px;" xmlns="http://www.w3.org/2000/svg">

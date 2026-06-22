@@ -46,7 +46,7 @@ exports.handler = async (event) => {
           totalScans,
           type:       p.Type?.select?.name || '',
           linksTo:    p['Links To']?.url || '',
-          topCountry: p['Top Country']?.rich_text?.[0]?.plain_text || '',
+          topCountries: p['Top Countries']?.rich_text?.[0]?.plain_text || '',
           notes:      p.Notes?.rich_text?.[0]?.plain_text || '',
           year:       p.Year?.select?.name || '',
           quarter:    p.Quarter?.select?.name || '',
