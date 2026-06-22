@@ -511,6 +511,23 @@ main {
   color: #94A3B8;
   font-size: 14px;
 }
+.insight-card.qr-auto {
+  border-left-color: #EA580C;
+}
+.qr-auto-label {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #EA580C;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: #FFF7ED;
+  border: 1px solid #FDBA74;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
 
 /* ── Trend section ── */
 #trend-section {
@@ -1535,6 +1552,8 @@ function renderDashboard() {
     return;
   }
 
+  const qrCompact = (activeCategory === 'all') ? renderQrCompactCard(selected, prevQuarter) : '';
+
   grid.innerHTML = platforms.map(platform => {
     const records = byPlatform[platform];
     const color = PLATFORM_COLOR[platform] || '#64748B';
@@ -1646,7 +1665,64 @@ function renderDashboard() {
       ${secondaryHtml}
       ${pubHtml}
     </div>`;
-  }).join('');
+  }).join('') + qrCompact;
+}
+
+function renderQrCompactCard(selected, prevQuarter) {
+  if (!qrRecords.length) return '';
+  const [year, quarter] = selected.split(' ');
+  const codes = qrRecords.filter(r => r.year === year && r.quarter === quarter);
+  if (!codes.length) return '';
+
+  const totalScans = codes.reduce((s, r) => s + (r.totalScans || 0), 0);
+  const top = [...codes].sort((a, b) => (b.totalScans || 0) - (a.totalScans || 0))[0];
+
+  // QoQ
+  let qoqHtml = '';
+  if (prevQuarter) {
+    const [py, pq] = prevQuarter.split(' ');
+    const prevCodes = qrRecords.filter(r => r.year === py && r.quarter === pq);
+    if (prevCodes.length) {
+      const prevTotal = prevCodes.reduce((s, r) => s + (r.totalScans || 0), 0);
+      if (prevTotal > 0) {
+        const pct = Math.round(((totalScans - prevTotal) / prevTotal) * 100);
+        const dir = pct > 0 ? 'up' : pct < 0 ? 'down' : 'neutral';
+        const sign = pct > 0 ? '+' : '';
+        qoqHtml = `<div class="metric-qoq ${dir}">${sign}${pct}% vs previous quarter</div>`;
+      }
+    }
+  }
+
+  // Top country
+  const countryStr = codes.find(c => c.topCountries)?.topCountries || '';
+  const firstCountry = countryStr.match(/^([^,(]+)/)?.[1]?.trim() || '';
+
+  const color = '#EA580C';
+  return `<div class="platform-card">
+    <div class="card-header" style="border-top:3px solid ${color}">
+      <div class="platform-dot" style="background:${color}"></div>
+      <span class="platform-name">QR Codes</span>
+    </div>
+    <div class="primary-metric">
+      <div class="primary-label">Total scans</div>
+      <div class="primary-value" style="color:${color}">${totalScans.toLocaleString('nl-NL')}</div>
+      ${qoqHtml}
+    </div>
+    <div class="secondary-metrics">
+      <div class="metric-row">
+        <span class="metric-label">Top code</span>
+        <span class="metric-value">${escHtml(top.name)} (${(top.totalScans || 0).toLocaleString('nl-NL')})</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Active codes</span>
+        <span class="metric-value">${codes.length}</span>
+      </div>
+      ${firstCountry ? `<div class="metric-row">
+        <span class="metric-label">Top country</span>
+        <span class="metric-value">${escHtml(firstCountry)}</span>
+      </div>` : ''}
+    </div>
+  </div>`;
 }
 
 // ── Publications table ────────────────────────────────
@@ -1739,14 +1815,76 @@ async function loadInsightsData() {
   }
 }
 
+function renderQrInsightCard() {
+  if (!qrRecords.length) return '';
+
+  // Most recent quarter with data
+  const quarters = [...new Set(qrRecords.map(r => `${r.year} ${r.quarter}`))].sort((a, b) => {
+    const [ay, aq] = a.split(' '), [by, bq] = b.split(' ');
+    return ay !== by ? ay.localeCompare(by) : aq.localeCompare(bq);
+  });
+  const latest = quarters[quarters.length - 1];
+  const [year, quarter] = latest.split(' ');
+
+  const codes = qrRecords
+    .filter(r => r.year === year && r.quarter === quarter)
+    .sort((a, b) => (b.totalScans || 0) - (a.totalScans || 0));
+  if (!codes.length) return '';
+
+  const totalScans = codes.reduce((s, r) => s + (r.totalScans || 0), 0);
+  const top = codes[0];
+  const topPct = totalScans ? Math.round((top.totalScans / totalScans) * 100) : 0;
+
+  // Parse top countries from the first record that has the field
+  const countryStr = codes.find(c => c.topCountries)?.topCountries || '';
+  const countries = [];
+  const re = /([^,(]+?)\s*\((\d+)\)/g;
+  let m;
+  while ((m = re.exec(countryStr)) !== null) countries.push({ name: m[1].trim(), count: parseInt(m[2], 10) });
+
+  // Type breakdown by scans
+  const typeScans = {};
+  for (const c of codes) typeScans[c.type || 'Other'] = (typeScans[c.type || 'Other'] || 0) + (c.totalScans || 0);
+  const typeBreakdown = Object.entries(typeScans).sort((a, b) => b[1] - a[1])
+    .map(([t, s]) => `${escHtml(t)}: ${s.toLocaleString('nl-NL')}`).join(' · ');
+
+  const bullets = [];
+  bullets.push(`<strong>${totalScans.toLocaleString('nl-NL')} total scans</strong> across ${codes.length} active QR code${codes.length !== 1 ? 's' : ''}.`);
+  bullets.push(`Top performer: <strong>${escHtml(top.name)}</strong> — ${top.totalScans.toLocaleString('nl-NL')} scans (${topPct}% of total).`);
+
+  if (countries.length) {
+    const primary = countries[0];
+    const rest = countries.slice(1).map(c => escHtml(c.name)).join(', ');
+    bullets.push(`Primary audience: <strong>${escHtml(primary.name)}</strong> (${primary.count.toLocaleString('nl-NL')} scans).`
+      + (rest ? ` Also reached: ${rest}.` : ''));
+  }
+
+  if (Object.keys(typeScans).length > 1) bullets.push(`By type — ${typeBreakdown}.`);
+
+  return `<div class="insight-card qr-auto">
+    <div style="padding:16px 20px 0">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <span class="qr-auto-label">Auto · QR Codes</span>
+        <span class="insight-toggle-title" style="font-size:15px;font-weight:700;color:#1E293B">QR Performance — ${escHtml(quarter)} ${escHtml(year)}</span>
+      </div>
+    </div>
+    <div class="insight-body" style="padding-top:0">
+      <ul>${bullets.map(b => `<li>${b}</li>`).join('')}</ul>
+      <div style="font-size:11px;color:#94A3B8;margin-top:4px">Generated from QR data · updates with each quarter</div>
+    </div>
+  </div>`;
+}
+
 function renderInsights() {
   const feed = document.getElementById('insights-feed');
+  const qrCard = renderQrInsightCard();
+
   if (!insightSections.length) {
-    feed.innerHTML = '<div class="insights-loading">No insights available yet.</div>';
+    feed.innerHTML = qrCard + '<div class="insights-loading">No insights available yet.</div>';
     return;
   }
 
-  feed.innerHTML = insightSections.map((section, idx) => {
+  feed.innerHTML = qrCard + insightSections.map((section, idx) => {
     const collapsed = idx > 0 ? 'collapsed' : '';
     const bodyHtml = section.items.map(item => {
       if (item.type === 'h2') return `<h2>${item.html}</h2>`;
