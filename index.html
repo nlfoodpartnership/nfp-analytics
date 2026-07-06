@@ -251,6 +251,41 @@ main {
   font-weight: 600;
   color: #1E293B;
 }
+.ai-referral-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 16px 8px;
+  padding: 6px 10px;
+  background: linear-gradient(135deg, #EDE9FE 0%, #E0F2FE 100%);
+  border: 1px solid #C4B5FD;
+  border-radius: 8px;
+}
+.ai-referral-icon {
+  font-size: 13px;
+  color: #7C3AED;
+}
+.ai-referral-label {
+  font-size: 12px;
+  color: #5B21B6;
+  flex: 1;
+  font-weight: 500;
+}
+.ai-referral-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: #4C1D95;
+}
+.ai-referral-new {
+  font-size: 10px;
+  color: #7C3AED;
+  background: #EDE9FE;
+  border: 1px solid #C4B5FD;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
 .metric-qoq {
   font-size: 11px;
   font-weight: 500;
@@ -1874,8 +1909,9 @@ function renderDashboard() {
     }
 
     // Secondary metrics (all except primary, aggregate only)
+    const aiReferralRec = records.find(r => r.metric === 'AI Referral Visitors');
     const secondaryRecs = records.filter(r =>
-      r.metric !== primaryMetric && !r.publication
+      r.metric !== primaryMetric && r.metric !== 'AI Referral Visitors' && !r.publication
     );
     const secondaryHtml = secondaryRecs.length > 0
       ? `<div class="secondary-metrics">${secondaryRecs.map(r => {
@@ -1886,6 +1922,14 @@ function renderDashboard() {
             ${fmtChange(r.result, prev, r.metric)}
           </div>`;
         }).join('')}</div>`
+      : '';
+    const aiReferralHtml = aiReferralRec
+      ? `<div class="ai-referral-indicator">
+          <span class="ai-referral-icon">✦</span>
+          <span class="ai-referral-label">AI Referral Visitors</span>
+          <span class="ai-referral-value">${fmt(aiReferralRec.result, 'AI Referral Visitors')}</span>
+          <span class="ai-referral-new">NEW</span>
+        </div>`
       : '';
 
     // Publications (Issuu only)
@@ -1917,6 +1961,7 @@ function renderDashboard() {
         ${qoqHtml}
         ${targetHtml}
       </div>
+      ${aiReferralHtml}
       ${secondaryHtml}
       ${pubHtml}
     </div>`;
