@@ -112,9 +112,13 @@ exports.handler = async (event) => {
     // Fetch all blocks
     const blocks = await fetchBlocks(PAGE_ID, headers);
 
-    // Split into sections by heading_1
+    // Split into sections by heading_1, or by heading_2 that immediately follows a divider.
+    // The Notion page uses H1 for main analytical sections and H2 for platform-specific
+    // and quarterly sections separated by --- dividers. Splitting on the divider+H2 pattern
+    // gives each platform section and the Q2 2026 insights their own collapsible card.
     const sections = [];
     let current = null;
+    let prevType = null;
 
     for (const block of blocks) {
       if (block.type === 'heading_1') {
@@ -123,9 +127,18 @@ exports.handler = async (event) => {
           title: richTextToPlain(block.heading_1.rich_text),
           blocks: [],
         };
+      } else if (block.type === 'heading_2' && prevType === 'divider') {
+        // Strip the trailing divider (it was a section separator, not content)
+        if (current && current.blocks.length > 0) current.blocks.pop();
+        if (current) sections.push(current);
+        current = {
+          title: richTextToPlain(block.heading_2.rich_text),
+          blocks: [],
+        };
       } else if (current) {
         current.blocks.push(block);
       }
+      prevType = block.type;
     }
     if (current) sections.push(current);
 
