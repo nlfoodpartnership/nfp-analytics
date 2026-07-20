@@ -766,6 +766,109 @@ main {
   #cards-grid { grid-template-columns: 1fr; }
   .primary-value { font-size: 28px; }
 }
+
+/* ── Ask widget ── */
+#ask-bubble {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #2563EB;
+  color: white;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(37,99,235,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  z-index: 1000;
+  transition: background .15s, transform .15s;
+}
+#ask-bubble:hover { background: #1D4ED8; transform: scale(1.07); }
+#ask-panel {
+  position: fixed;
+  bottom: 82px;
+  right: 24px;
+  width: 320px;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  z-index: 1000;
+  overflow: hidden;
+  display: none;
+  flex-direction: column;
+}
+#ask-panel.open { display: flex; }
+.ask-panel-header {
+  background: #2563EB;
+  color: white;
+  padding: 14px 16px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ask-panel-header h3 { font-size: 14px; font-weight: 700; margin: 0; }
+.ask-panel-header p { font-size: 11px; opacity: .8; margin: 2px 0 0; }
+.ask-close {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  opacity: .8;
+  padding: 0;
+}
+.ask-close:hover { opacity: 1; }
+.ask-panel-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.ask-panel-body label { font-size: 12px; font-weight: 600; color: #475569; display: block; margin-bottom: 3px; }
+.ask-panel-body input,
+.ask-panel-body textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #1E293B;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  transition: border-color .15s;
+}
+.ask-panel-body input:focus,
+.ask-panel-body textarea:focus { border-color: #2563EB; }
+.ask-submit {
+  background: #2563EB;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: background .15s;
+}
+.ask-submit:hover { background: #1D4ED8; }
+.ask-submit:disabled { background: #93C5FD; cursor: default; }
+.ask-feedback {
+  font-size: 12px;
+  text-align: center;
+  padding: 0 16px 14px;
+  display: none;
+}
+.ask-feedback.success { color: #16A34A; }
+.ask-feedback.error   { color: #DC2626; }
+.ask-not-configured {
+  font-size: 12px;
+  color: #94A3B8;
+  text-align: center;
+  padding: 8px 0 0;
+}
 </style>
 </head>
 <body>
@@ -2491,6 +2594,101 @@ if (authToken) {
   document.getElementById('app').style.display = 'block';
   loadData();
 }
+
+// ── Ask widget ────────────────────────────────────────
+function toggleAskPanel() {
+  const panel = document.getElementById('ask-panel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) {
+    document.getElementById('ask-name').focus();
+  }
+}
+
+async function submitAsk() {
+  const name     = document.getElementById('ask-name').value.trim();
+  const question = document.getElementById('ask-question').value.trim();
+  const btn      = document.getElementById('ask-submit-btn');
+  const feedback = document.getElementById('ask-feedback');
+
+  if (!name || !question) {
+    feedback.textContent = 'Please fill in both fields.';
+    feedback.className = 'ask-feedback error';
+    feedback.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  feedback.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/ask', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Dashboard-Token': authToken,
+      },
+      body: JSON.stringify({ name, question }),
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      document.getElementById('ask-name').value = '';
+      document.getElementById('ask-question').value = '';
+      feedback.textContent = '✓ Sent! We\'ll get back to you on Slack.';
+      feedback.className = 'ask-feedback success';
+      feedback.style.display = 'block';
+      setTimeout(() => {
+        feedback.style.display = 'none';
+        document.getElementById('ask-panel').classList.remove('open');
+      }, 3000);
+    } else if (data.error === 'Slack not configured') {
+      feedback.textContent = 'Slack not connected yet — ask your admin to add SLACK_WEBHOOK_URL.';
+      feedback.className = 'ask-feedback error';
+      feedback.style.display = 'block';
+    } else {
+      feedback.textContent = 'Something went wrong. Try again.';
+      feedback.className = 'ask-feedback error';
+      feedback.style.display = 'block';
+    }
+  } catch {
+    feedback.textContent = 'Could not reach the server.';
+    feedback.className = 'ask-feedback error';
+    feedback.style.display = 'block';
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Send to Slack';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('ask-panel')?.classList.remove('open');
+});
 </script>
+
+<!-- Ask widget -->
+<button id="ask-bubble" onclick="toggleAskPanel()" title="Ask a question">💬</button>
+<div id="ask-panel">
+  <div class="ask-panel-header">
+    <div>
+      <h3>Ask a question</h3>
+      <p>Goes straight to Slack</p>
+    </div>
+    <button class="ask-close" onclick="toggleAskPanel()">✕</button>
+  </div>
+  <div class="ask-panel-body">
+    <div>
+      <label for="ask-name">Your name</label>
+      <input id="ask-name" type="text" placeholder="e.g. Bente" maxlength="100">
+    </div>
+    <div>
+      <label for="ask-question">Question or comment</label>
+      <textarea id="ask-question" rows="4" placeholder="What would you like to know?" maxlength="2000"></textarea>
+    </div>
+    <button id="ask-submit-btn" class="ask-submit" onclick="submitAsk()">Send to Slack</button>
+  </div>
+  <div id="ask-feedback" class="ask-feedback"></div>
+</div>
+
 </body>
 </html>
