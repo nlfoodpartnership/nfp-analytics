@@ -21,11 +21,14 @@ exports.handler = async (event) => {
   }
 
   const name     = (body.name     || '').trim().slice(0, 100);
+  const slackId  = (body.slackId  || '').trim().replace(/[^A-Z0-9]/gi, '').slice(0, 20);
   const question = (body.question || '').trim().slice(0, 2000);
 
-  if (!name || !question) {
+  if (!question || (!name && !slackId)) {
     return { statusCode: 400, body: JSON.stringify({ error: 'Name and question are required' }) };
   }
+
+  const fromText = slackId ? `<@${slackId}>` : name;
 
   const payload = {
     blocks: [
@@ -33,14 +36,8 @@ exports.handler = async (event) => {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*New question from NFP Analytics dashboard*`,
+          text: `*New question from NFP Analytics dashboard* — from ${fromText}`,
         },
-      },
-      {
-        type: 'section',
-        fields: [
-          { type: 'mrkdwn', text: `*From:*\n${name}` },
-        ],
       },
       {
         type: 'section',

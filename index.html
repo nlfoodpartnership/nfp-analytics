@@ -2596,6 +2596,40 @@ if (authToken) {
 }
 
 // ── Ask widget ────────────────────────────────────────
+const TEAM_MEMBERS = [
+  { name: 'Abaseen Ashraf',       id: 'U0AT2TWEJ82' },
+  { name: 'Abegael',              id: 'U08LW0M8EU9' },
+  { name: 'Babette Bodlaender',   id: 'U05CR4S209J' },
+  { name: 'Bente Meindertsma',    id: 'U05C2UK8LVC' },
+  { name: 'Elja Jong',            id: 'U062J2AJER0' },
+  { name: 'Floris Wouters',       id: 'U06F8L3LALC' },
+  { name: 'Frans Verschuure',     id: 'U09QS92JFFE' },
+  { name: 'Gareth',               id: 'U0BEHN98V0R' },
+  { name: 'Hector',               id: 'U0AMU7B161M' },
+  { name: 'Hilke Jansen',         id: 'U06HUJASFLZ' },
+  { name: 'Huiberdien Sweeris',   id: 'U0AR98UHMQW' },
+  { name: 'Ibrahim',              id: 'U05DB3BTT5G' },
+  { name: 'Ivo Demmers',          id: 'U05CQQ60GSG' },
+  { name: 'Jasper Szarafinski',   id: 'U062BL0S1LN' },
+  { name: 'Lisette',              id: 'U05CWH2DZF1' },
+  { name: 'Lobna Mokhtar',        id: 'U05UD80DXBR' },
+  { name: 'Marijke Zonnenberg',   id: 'U062JM0TZP0' },
+  { name: 'Mariëlle Karssenberg', id: 'U05CBD86SN8' },
+  { name: 'Marjan Riepma',        id: 'U06F55FGYJF' },
+  { name: 'Mark Fonseca Rendeiro',id: 'U05AY970NLS' },
+  { name: 'Marloes Verkerk',      id: 'U08FWNY5NP6' },
+  { name: 'Martijn van Dalen',    id: 'U08DQJ2CZ09' },
+  { name: 'Mitha Wulandaru',      id: 'U05UVQMHHCJ' },
+  { name: 'Nicole Metz',          id: 'U05C6L65ERK' },
+  { name: 'Roel Snelder',         id: 'U062WGEQUEM' },
+  { name: 'Roseline',             id: 'U07PN92ML7Q' },
+  { name: 'Ruth van de Velde',    id: 'U05G1JUJA3W' },
+  { name: 'Sanne Steemers',       id: 'U0B5ZHL2KJP' },
+  { name: 'Suzan van Hees',       id: 'U05DA5L2Y2X' },
+  { name: 'Willem Schoustra',     id: 'U062JJ5PYLS' },
+  { name: 'Wim Goris',            id: 'U05DA5CQKLJ' },
+];
+
 function toggleAskPanel() {
   const panel = document.getElementById('ask-panel');
   panel.classList.toggle('open');
@@ -2605,13 +2639,15 @@ function toggleAskPanel() {
 }
 
 async function submitAsk() {
-  const name     = document.getElementById('ask-name').value.trim();
+  const sel      = document.getElementById('ask-name');
+  const slackId  = sel.value;
+  const name     = sel.options[sel.selectedIndex]?.text || '';
   const question = document.getElementById('ask-question').value.trim();
   const btn      = document.getElementById('ask-submit-btn');
   const feedback = document.getElementById('ask-feedback');
 
-  if (!name || !question) {
-    feedback.textContent = 'Please fill in both fields.';
+  if (!slackId || !question) {
+    feedback.textContent = 'Please select your name and enter a question.';
     feedback.className = 'ask-feedback error';
     feedback.style.display = 'block';
     return;
@@ -2628,7 +2664,7 @@ async function submitAsk() {
         'Content-Type': 'application/json',
         'X-Dashboard-Token': authToken,
       },
-      body: JSON.stringify({ name, question }),
+      body: JSON.stringify({ name, slackId, question }),
     });
     const data = await res.json();
 
@@ -2678,8 +2714,11 @@ document.addEventListener('keydown', e => {
   </div>
   <div class="ask-panel-body">
     <div>
-      <label for="ask-name">Your name</label>
-      <input id="ask-name" type="text" placeholder="e.g. Bente" maxlength="100">
+      <label for="ask-name">Who are you?</label>
+      <select id="ask-name" style="width:100%;box-sizing:border-box;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px;font-size:13px;color:#1E293B;font-family:inherit;outline:none;background:white">
+        <option value="">Select your name…</option>
+        ${TEAM_MEMBERS.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
+      </select>
     </div>
     <div>
       <label for="ask-question">Question or comment</label>
