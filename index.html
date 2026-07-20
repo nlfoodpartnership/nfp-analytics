@@ -768,10 +768,31 @@ main {
 }
 
 /* ── Ask widget ── */
-#ask-bubble {
+#ask-bubble-wrap {
   position: fixed;
   bottom: 24px;
   right: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  z-index: 1000;
+}
+#ask-bubble-label {
+  background: #1E293B;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  cursor: pointer;
+  opacity: 1;
+  transition: opacity .15s;
+}
+#ask-bubble-label:hover { opacity: .85; }
+#ask-bubble {
   width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -784,13 +805,13 @@ main {
   align-items: center;
   justify-content: center;
   font-size: 20px;
-  z-index: 1000;
+  align-self: flex-end;
   transition: background .15s, transform .15s;
 }
 #ask-bubble:hover { background: #1D4ED8; transform: scale(1.07); }
 #ask-panel {
   position: fixed;
-  bottom: 82px;
+  bottom: 110px;
   right: 24px;
   width: 320px;
   background: white;
@@ -2703,7 +2724,10 @@ document.addEventListener('keydown', e => {
 </script>
 
 <!-- Ask widget -->
-<button id="ask-bubble" onclick="toggleAskPanel()" title="Ask a question">💬</button>
+<div id="ask-bubble-wrap">
+  <span id="ask-bubble-label" onclick="toggleAskPanel()">Ask the communications team</span>
+  <button id="ask-bubble" onclick="toggleAskPanel()" title="Ask the communications team a question">💬</button>
+</div>
 <div id="ask-panel">
   <div class="ask-panel-header">
     <div>
