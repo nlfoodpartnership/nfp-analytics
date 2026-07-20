@@ -2721,6 +2721,17 @@ async function submitAsk() {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') document.getElementById('ask-panel')?.classList.remove('open');
 });
+
+// Populate team dropdown
+(function() {
+  const sel = document.getElementById('ask-name');
+  TEAM_MEMBERS.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.name;
+    sel.appendChild(opt);
+  });
+})();
 </script>
 
 <!-- Ask widget -->
@@ -2741,7 +2752,6 @@ document.addEventListener('keydown', e => {
       <label for="ask-name">Who are you?</label>
       <select id="ask-name" style="width:100%;box-sizing:border-box;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px;font-size:13px;color:#1E293B;font-family:inherit;outline:none;background:white">
         <option value="">Select your name…</option>
-        ${TEAM_MEMBERS.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
       </select>
     </div>
     <div>
