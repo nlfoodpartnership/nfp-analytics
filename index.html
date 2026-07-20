@@ -509,6 +509,94 @@ main {
   font-size: 12px;
   color: #94A3B8;
 }
+/* ── Strategy goal tracker strip ── */
+.strategy-strip {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border-left: 4px solid #16A34A;
+  padding: 16px 20px 18px;
+  margin-bottom: 16px;
+}
+.strategy-strip-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1E293B;
+}
+.strategy-strip-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #16A34A;
+  background: #DCFCE7;
+  border: 1px solid #BBF7D0;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+.strategy-goals-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px 24px;
+}
+@media (max-width: 600px) {
+  .strategy-goals-grid { grid-template-columns: 1fr; }
+}
+.strategy-goal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+.strategy-goal-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+.strategy-goal-pct {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748B;
+}
+.strategy-goal-badge {
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.strategy-goal-badge.achieved {
+  color: #15803D;
+  background: #DCFCE7;
+  border: 1px solid #BBF7D0;
+}
+.strategy-goal-bar-bg {
+  background: #F1F5F9;
+  border-radius: 4px;
+  height: 6px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.strategy-goal-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .4s ease;
+}
+.strategy-goal-values {
+  font-size: 11px;
+  color: #64748B;
+  display: flex;
+  gap: 4px;
+  align-items: baseline;
+}
+.strategy-goal-values strong {
+  font-size: 13px;
+  color: #1E293B;
+}
+
 .insight-card {
   background: white;
   border-radius: 12px;
@@ -516,6 +604,19 @@ main {
   margin-bottom: 12px;
   overflow: hidden;
   border-left: 4px solid #2563EB;
+}
+.insight-card.strategy-card { border-left-color: #16A34A; }
+.strategy-badge-inline {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #16A34A;
+  background: #DCFCE7;
+  border: 1px solid #BBF7D0;
+  border-radius: 4px;
+  padding: 2px 6px;
+  flex-shrink: 0;
 }
 .insight-card.collapsed .insight-body { display: none; }
 .insight-toggle {
@@ -2174,17 +2275,74 @@ function renderQrInsightCard() {
   </div>`;
 }
 
+function renderStrategyStrip() {
+  if (!allRecords.length) return '';
+
+  const GOALS = [
+    { platform: 'LinkedIn',                    metric: 'Followers',       fallbackTarget: 15000, label: 'LinkedIn Followers',       color: '#0A66C2' },
+    { platform: 'YouTube',                     metric: 'Subscribers',     fallbackTarget: 700,   label: 'YouTube Subscribers',       color: '#FF0000' },
+    { platform: 'Flodesk Newsletter',          metric: 'Subscribers',     fallbackTarget: 13000, label: 'Newsletter Subscribers',    color: '#22C55E' },
+    { platform: 'Website – nfpconnects.com',   metric: 'Unique Visitors', fallbackTarget: 35000, label: 'NFPConnects Visitors',      color: '#7C3AED' },
+  ];
+
+  const goals = GOALS.map(g => {
+    const recs = allRecords
+      .filter(r => r.platform === g.platform && r.metric === g.metric && !r.publication)
+      .sort((a, b) => {
+        if (b.year !== a.year) return b.year.localeCompare(a.year);
+        return b.quarter.localeCompare(a.quarter);
+      });
+
+    const latest   = recs[0];
+    const targetRec = recs.find(r => r.target != null);
+    const target   = targetRec?.target ?? g.fallbackTarget;
+    const current  = latest?.result ?? null;
+    const pct      = current !== null ? Math.min(100, Math.round(current / target * 100)) : null;
+    const exceeded = current !== null && current >= target;
+    const barColor = exceeded ? '#16A34A' : (pct >= 80 ? g.color : (pct >= 50 ? '#F59E0B' : '#94A3B8'));
+
+    return `<div class="strategy-goal">
+      <div class="strategy-goal-header">
+        <span class="strategy-goal-label">${g.label}</span>
+        ${exceeded
+          ? '<span class="strategy-goal-badge achieved">✓ Achieved</span>'
+          : `<span class="strategy-goal-pct">${pct !== null ? pct + '%' : '—'}</span>`}
+      </div>
+      <div class="strategy-goal-bar-bg">
+        <div class="strategy-goal-bar-fill" style="width:${pct ?? 0}%;background:${barColor}"></div>
+      </div>
+      <div class="strategy-goal-values">
+        <strong>${current !== null ? fmt(current, g.metric) : '—'}</strong>
+        <span>/ ${fmt(target, g.metric)} target${latest ? ` · ${latest.year} ${latest.quarter}` : ''}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div class="strategy-strip">
+    <div class="strategy-strip-title">
+      2026 Annual Plan Targets
+      <span class="strategy-strip-badge">Strategy</span>
+    </div>
+    <div class="strategy-goals-grid">${goals}</div>
+  </div>`;
+}
+
 function renderInsights() {
   const feed = document.getElementById('insights-feed');
+  const strategyStrip = renderStrategyStrip();
   const qrCard = renderQrInsightCard();
 
   if (!insightSections.length) {
-    feed.innerHTML = qrCard + '<div class="insights-loading">No insights available yet.</div>';
+    feed.innerHTML = strategyStrip + qrCard + '<div class="insights-loading">No insights available yet.</div>';
     return;
   }
 
-  feed.innerHTML = qrCard + insightSections.map((section, idx) => {
+  feed.innerHTML = strategyStrip + qrCard + insightSections.map((section, idx) => {
+    const isStrategy = section.title.toLowerCase().includes('strategic alignment');
     const collapsed = idx > 0 ? 'collapsed' : '';
+    const cardClass = isStrategy ? 'insight-card strategy-card' : `insight-card ${collapsed}`;
+    const badgeHtml = isStrategy ? '<span class="strategy-badge-inline">Strategy</span>' : '';
+
     const bodyHtml = section.items.map(item => {
       if (item.type === 'h2') return `<h2>${item.html}</h2>`;
       if (item.type === 'h3') return `<h3>${item.html}</h3>`;
@@ -2197,8 +2355,9 @@ function renderInsights() {
       return '';
     }).join('');
 
-    return `<div class="insight-card ${collapsed}" id="insight-${idx}">
-      <button class="insight-toggle" onclick="toggleInsight(${idx})" aria-expanded="${idx === 0}">
+    return `<div class="${cardClass}" id="insight-${idx}">
+      <button class="insight-toggle" onclick="toggleInsight(${idx})" aria-expanded="${!isStrategy && idx === 0}">
+        ${badgeHtml}
         <span class="insight-toggle-title">${escHtml(section.title)}</span>
         <span class="insight-toggle-caret">▼</span>
       </button>
