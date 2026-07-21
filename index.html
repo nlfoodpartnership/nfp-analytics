@@ -110,28 +110,6 @@ header {
 #category-nav button:hover { color: #1E293B; }
 #category-nav button.active { color: #2563EB; border-bottom-color: #2563EB; font-weight: 600; }
 
-/* ── Subtab nav (NFP Connects) ── */
-#subtab-nav {
-  background: #F8FAFC;
-  border-bottom: 1px solid #E2E8F0;
-  padding: 0 24px;
-  display: none;
-  gap: 4px;
-}
-#subtab-nav button {
-  padding: 9px 14px;
-  border: none;
-  background: none;
-  font-size: 13px;
-  font-weight: 500;
-  color: #64748B;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  white-space: nowrap;
-  transition: color .15s, border-color .15s;
-}
-#subtab-nav button:hover { color: #1E293B; }
-#subtab-nav button.active { color: #0891B2; border-bottom-color: #0891B2; font-weight: 600; }
 
 /* ── Main ── */
 main {
@@ -909,7 +887,7 @@ main {
 <div id="app" style="display:none">
   <header>
     <span class="logo">NFP <span>Analytics</span></span>
-    <select id="quarter-select" onchange="renderDashboard(); renderContentSection(); renderPublicationsSection(); renderQrSection(); renderDownloadsSection()"></select>
+    <select id="quarter-select" onchange="onQuarterChange()"></select>
   </header>
 
   <div id="category-nav">
@@ -919,13 +897,10 @@ main {
     <button data-cat="website" onclick="setCategory(this)">Website</button>
     <button data-cat="publications" onclick="setCategory(this)">Publications</button>
     <button data-cat="podcast" onclick="setCategory(this)">Podcast</button>
-    <button data-cat="nfpconnects" onclick="setCategory(this)">QR's &amp; Downloads</button>
+    <button data-cat="video" onclick="setCategory(this)">Video</button>
+    <button data-cat="qr" onclick="setCategory(this)">QR Codes</button>
+    <button data-cat="downloads" onclick="setCategory(this)">Downloads</button>
     <button data-cat="insights" onclick="setCategory(this)">✦ Insights</button>
-  </div>
-
-  <div id="subtab-nav" style="display:none">
-    <button class="active" data-sub="qr" onclick="setSubtab(this)">QR Codes</button>
-    <button data-sub="downloads" onclick="setSubtab(this)">Downloads</button>
   </div>
 
   <main>
@@ -969,6 +944,10 @@ main {
 
   <div id="content-publications-section" style="display:none">
     <div id="content-publications" class="content-block"></div>
+  </div>
+
+  <div id="video-section" style="display:none; padding:0 24px; max-width:1280px; margin:0 auto 32px;">
+    <div id="video-content"></div>
   </div>
 
   <div id="qr-section" style="display:none; padding:0 24px; max-width:1280px; margin:0 auto 32px;">
@@ -1465,6 +1444,54 @@ async function renderQrMap(codes) {
   }
 }
 
+// ── Video ─────────────────────────────────────────────
+function renderVideoSection() {
+  const el = document.getElementById('video-content');
+  const quarter = getSelectedQuarter();
+  const records = allRecords.filter(r => r.platform === 'YouTube' && r.quarter === quarter);
+
+  if (!records.length) {
+    el.innerHTML = '<p style="color:#64748B;padding:32px 0;">No YouTube data for this quarter.</p>';
+    return;
+  }
+
+  const get = (metric) => records.find(r => r.metric === metric);
+  const fmt2 = (v, m) => (v == null ? '—' : fmt(v, m));
+
+  const subs    = get('Subscribers');
+  const gained  = get('Subscribers Gained');
+  const views   = get('Views');
+  const watchTime = get('Watch Time (hours)');
+  const avgView = get('Average View Duration');
+  const impressions = get('Impressions');
+  const ctr     = get('Click-through Rate');
+
+  const stat = (label, rec, metric) => `
+    <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:20px 24px;">
+      <div style="font-size:12px;font-weight:600;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">${label}</div>
+      <div style="font-size:28px;font-weight:700;color:#1E293B;">${rec ? fmt2(rec.result, metric) : '—'}</div>
+      ${rec?.trend != null ? `<div style="font-size:12px;color:${rec.trend >= 0 ? '#16A34A' : '#DC2626'};margin-top:4px;">${rec.trend >= 0 ? '▲' : '▼'} ${Math.abs(rec.trend)}% vs prev quarter</div>` : ''}
+    </div>`;
+
+  el.innerHTML = `
+    <div style="margin-bottom:24px;">
+      <h2 style="font-size:20px;font-weight:700;color:#1E293B;margin:0 0 4px;">YouTube Performance</h2>
+      <p style="font-size:14px;color:#64748B;margin:0;">Q${quarter} overview — individual video stats coming soon.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;">
+      ${stat('Subscribers', subs, 'Subscribers')}
+      ${gained ? stat('Subscribers Gained', gained, 'Subscribers Gained') : ''}
+      ${stat('Total Views', views, 'Views')}
+      ${stat('Watch Time (hrs)', watchTime, 'Watch Time (hours)')}
+      ${stat('Avg View Duration', avgView, 'Average View Duration')}
+      ${stat('Impressions', impressions, 'Impressions')}
+      ${stat('Click-through Rate', ctr, 'Click-through Rate')}
+    </div>
+    <div style="margin-top:32px;padding:20px 24px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:12px;color:#92400E;font-size:14px;">
+      <strong>Coming soon:</strong> individual video performance cards — views, watch time, and retention per video.
+    </div>`;
+}
+
 // ── Downloads ─────────────────────────────────────────
 function renderDownloadsSection() {
   const el = document.getElementById('downloads-content');
@@ -1951,17 +1978,24 @@ function getSelectedQuarter() {
   return document.getElementById('quarter-select').value;
 }
 
-// ── Category filter ──────────────────────────────────
-let activeSubtab = 'qr';
+// ── Quarter change ────────────────────────────────────
+function onQuarterChange() {
+  if (activeCategory === 'qr') { renderQrSection(); return; }
+  if (activeCategory === 'downloads') { renderDownloadsSection(); return; }
+  if (activeCategory === 'video') { renderVideoSection(); return; }
+  renderDashboard();
+  renderContentSection();
+  renderPublicationsSection();
+}
 
-function setSubtab(btn) {
-  document.querySelectorAll('#subtab-nav button').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  activeSubtab = btn.dataset.sub;
-  document.getElementById('qr-section').style.display = activeSubtab === 'qr' ? 'block' : 'none';
-  document.getElementById('downloads-section').style.display = activeSubtab === 'downloads' ? 'block' : 'none';
-  if (activeSubtab === 'qr') renderQrSection();
-  if (activeSubtab === 'downloads') renderDownloadsSection();
+// ── Category filter ──────────────────────────────────
+const SPECIAL_SECTIONS = ['insights', 'qr', 'downloads', 'video'];
+
+function hideAllSpecialSections() {
+  document.getElementById('insights-section').style.display = 'none';
+  document.getElementById('qr-section').style.display = 'none';
+  document.getElementById('downloads-section').style.display = 'none';
+  document.getElementById('video-section').style.display = 'none';
 }
 
 function setCategory(btn) {
@@ -1969,28 +2003,50 @@ function setCategory(btn) {
   btn.classList.add('active');
   activeCategory = btn.dataset.cat;
 
-  const isInsights    = activeCategory === 'insights';
-  const isNfpConnects = activeCategory === 'nfpconnects';
-  const isSpecial     = isInsights || isNfpConnects;
+  const isInsights  = activeCategory === 'insights';
+  const isQr        = activeCategory === 'qr';
+  const isDownloads = activeCategory === 'downloads';
+  const isVideo     = activeCategory === 'video';
+  const isSpecial   = SPECIAL_SECTIONS.includes(activeCategory);
 
-  document.getElementById('subtab-nav').style.display = isNfpConnects ? 'flex' : 'none';
+  hideAllSpecialSections();
   document.getElementById('quarter-select').style.display = isInsights ? 'none' : '';
-  document.getElementById('insights-section').style.display = isInsights ? 'block' : 'none';
-  document.getElementById('qr-section').style.display = (isNfpConnects && activeSubtab === 'qr') ? 'block' : 'none';
-  document.getElementById('downloads-section').style.display = (isNfpConnects && activeSubtab === 'downloads') ? 'block' : 'none';
   document.getElementById('trend-section').style.display = isSpecial ? 'none' : (allRecords.length ? 'block' : 'none');
 
   if (isInsights) {
-    if (!insightsLoaded) loadInsightsData();
-    return;
-  }
-  if (isNfpConnects) {
+    document.getElementById('insights-section').style.display = 'block';
     document.getElementById('cards-grid').style.display = 'none';
     document.getElementById('content-section').style.display = 'none';
     document.getElementById('content-newsletter-section').style.display = 'none';
     document.getElementById('content-publications-section').style.display = 'none';
-    if (activeSubtab === 'qr') renderQrSection();
-    if (activeSubtab === 'downloads') renderDownloadsSection();
+    if (!insightsLoaded) loadInsightsData();
+    return;
+  }
+  if (isQr) {
+    document.getElementById('qr-section').style.display = 'block';
+    document.getElementById('cards-grid').style.display = 'none';
+    document.getElementById('content-section').style.display = 'none';
+    document.getElementById('content-newsletter-section').style.display = 'none';
+    document.getElementById('content-publications-section').style.display = 'none';
+    renderQrSection();
+    return;
+  }
+  if (isDownloads) {
+    document.getElementById('downloads-section').style.display = 'block';
+    document.getElementById('cards-grid').style.display = 'none';
+    document.getElementById('content-section').style.display = 'none';
+    document.getElementById('content-newsletter-section').style.display = 'none';
+    document.getElementById('content-publications-section').style.display = 'none';
+    renderDownloadsSection();
+    return;
+  }
+  if (isVideo) {
+    document.getElementById('video-section').style.display = 'block';
+    document.getElementById('cards-grid').style.display = 'none';
+    document.getElementById('content-section').style.display = 'none';
+    document.getElementById('content-newsletter-section').style.display = 'none';
+    document.getElementById('content-publications-section').style.display = 'none';
+    renderVideoSection();
     return;
   }
   renderDashboard();
