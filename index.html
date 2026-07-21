@@ -1447,48 +1447,100 @@ async function renderQrMap(codes) {
 // ── Video ─────────────────────────────────────────────
 function renderVideoSection() {
   const el = document.getElementById('video-content');
-  const quarter = getSelectedQuarter();
-  const records = allRecords.filter(r => r.platform === 'YouTube' && r.quarter === quarter);
+  const selected = getSelectedQuarter();
+  const [year, quarter] = selected.split(' ');
 
-  if (!records.length) {
+  // Prefer clean (non-warning) records; fall back to any
+  const allYT = allRecords.filter(r => r.platform === 'YouTube' && r.year === year && r.quarter === quarter);
+
+  if (!allYT.length) {
     el.innerHTML = '<p style="color:#64748B;padding:32px 0;">No YouTube data for this quarter.</p>';
     return;
   }
 
-  const get = (metric) => records.find(r => r.metric === metric);
-  const fmt2 = (v, m) => (v == null ? '—' : fmt(v, m));
+  // For each metric, prefer the non-warning record
+  const get = (metric) => {
+    const matches = allYT.filter(r => r.metric === metric);
+    return matches.find(r => !r.warning) || matches[0] || null;
+  };
 
-  const subs    = get('Subscribers');
-  const gained  = get('Subscribers Gained');
-  const views   = get('Views');
-  const watchTime = get('Watch Time (hours)');
-  const avgView = get('Average View Duration');
+  // Compare with previous quarter
+  const quarters = ['Q1','Q2','Q3','Q4'];
+  const qi = quarters.indexOf(quarter);
+  const prevQ = qi > 0 ? quarters[qi - 1] : quarters[3];
+  const prevY = qi > 0 ? year : String(+year - 1);
+  const prevYT = allRecords.filter(r => r.platform === 'YouTube' && r.year === prevY && r.quarter === prevQ);
+  const getPrev = (metric) => {
+    const matches = prevYT.filter(r => r.metric === metric);
+    return matches.find(r => !r.warning) || matches[0] || null;
+  };
+
+  const delta = (cur, prev) => {
+    if (!cur || !prev || !prev.result) return null;
+    return Math.round(((cur.result - prev.result) / prev.result) * 100);
+  };
+
+  const subs       = get('Subscribers');
+  const views      = get('Page Views');
   const impressions = get('Impressions');
-  const ctr     = get('Click-through Rate');
+  const avgDuration = get('Avg Time on Page');  // stored in seconds
+  const clicks     = get('Click-through');
+  const unique     = get('Unique Visitors');
 
-  const stat = (label, rec, metric) => `
-    <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:20px 24px;">
+  const prevSubs   = getPrev('Subscribers');
+  const prevViews  = getPrev('Page Views');
+  const prevImpr   = getPrev('Impressions');
+
+  // Format avg duration from seconds to m:ss
+  const fmtDuration = (rec) => {
+    if (!rec) return '—';
+    const s = rec.result;
+    const m = Math.floor(s / 60);
+    const sec = Math.round(s % 60);
+    return `${m}m ${sec.toString().padStart(2,'0')}s`;
+  };
+
+  const trend = (pct) => {
+    if (pct == null) return '';
+    const color = pct >= 0 ? '#16A34A' : '#DC2626';
+    const arrow = pct >= 0 ? '▲' : '▼';
+    return `<div style="font-size:12px;color:${color};margin-top:4px;">${arrow} ${Math.abs(pct)}% vs prev quarter</div>`;
+  };
+
+  const stat = (label, valueHtml, trendHtml = '', warn = false) => `
+    <div style="background:#F8FAFC;border:1px solid ${warn ? '#FCD34D' : '#E2E8F0'};border-radius:12px;padding:20px 24px;position:relative;">
+      ${warn ? '<span style="position:absolute;top:10px;right:12px;font-size:11px;color:#92400E;">⚠ approx</span>' : ''}
       <div style="font-size:12px;font-weight:600;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">${label}</div>
-      <div style="font-size:28px;font-weight:700;color:#1E293B;">${rec ? fmt2(rec.result, metric) : '—'}</div>
-      ${rec?.trend != null ? `<div style="font-size:12px;color:${rec.trend >= 0 ? '#16A34A' : '#DC2626'};margin-top:4px;">${rec.trend >= 0 ? '▲' : '▼'} ${Math.abs(rec.trend)}% vs prev quarter</div>` : ''}
+      <div style="font-size:28px;font-weight:700;color:#1E293B;">${valueHtml}</div>
+      ${trendHtml}
     </div>`;
+
+  // Pull top video from Impressions notes if present
+  const imprNotes = impressions?.notes || '';
+  const topVideoMatch = imprNotes.match(/Top video[:\s]+["""]?([^""\n(]+)/i);
+  const topVideo = topVideoMatch ? topVideoMatch[1].trim().replace(/["""]/g,'') : null;
+
+  const notesHtml = topVideo ? `
+    <div style="margin-top:16px;padding:16px 20px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;font-size:14px;color:#14532D;">
+      <strong>Top video this quarter:</strong> ${escHtml(topVideo)}
+    </div>` : '';
 
   el.innerHTML = `
     <div style="margin-bottom:24px;">
       <h2 style="font-size:20px;font-weight:700;color:#1E293B;margin:0 0 4px;">YouTube Performance</h2>
-      <p style="font-size:14px;color:#64748B;margin:0;">Q${quarter} overview — individual video stats coming soon.</p>
+      <p style="font-size:14px;color:#64748B;margin:0;">${quarter} ${year} · channel overview</p>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;">
-      ${stat('Subscribers', subs, 'Subscribers')}
-      ${gained ? stat('Subscribers Gained', gained, 'Subscribers Gained') : ''}
-      ${stat('Total Views', views, 'Views')}
-      ${stat('Watch Time (hrs)', watchTime, 'Watch Time (hours)')}
-      ${stat('Avg View Duration', avgView, 'Average View Duration')}
-      ${stat('Impressions', impressions, 'Impressions')}
-      ${stat('Click-through Rate', ctr, 'Click-through Rate')}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;">
+      ${subs   ? stat('Subscribers',       fmt(subs.result, 'Subscribers'),  trend(delta(subs, prevSubs)), subs.warning) : ''}
+      ${views  ? stat('Total Views',        fmt(views.result, 'Page Views'),  trend(delta(views, prevViews)), views.warning) : ''}
+      ${impressions ? stat('Impressions',   fmt(impressions.result, 'Impressions'), trend(delta(impressions, prevImpr)), impressions.warning) : ''}
+      ${avgDuration ? stat('Avg View Duration', fmtDuration(avgDuration), '', avgDuration.warning) : ''}
+      ${clicks  ? stat('Total Clicks',      fmt(clicks.result, 'Click-through'), '', clicks.warning) : ''}
+      ${unique  ? stat('Unique Viewers',    fmt(unique.result, 'Unique Visitors'), '', unique.warning) : ''}
     </div>
-    <div style="margin-top:32px;padding:20px 24px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:12px;color:#92400E;font-size:14px;">
-      <strong>Coming soon:</strong> individual video performance cards — views, watch time, and retention per video.
+    ${notesHtml}
+    <div style="margin-top:24px;padding:16px 20px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;color:#92400E;font-size:13px;">
+      <strong>Coming soon:</strong> individual video performance cards.
     </div>`;
 }
 

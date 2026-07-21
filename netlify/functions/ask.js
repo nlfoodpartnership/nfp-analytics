@@ -21,14 +21,13 @@ exports.handler = async (event) => {
   }
 
   const name     = (body.name     || '').trim().slice(0, 100);
-  const slackId  = (body.slackId  || '').trim().replace(/[^A-Z0-9]/gi, '').slice(0, 20);
   const question = (body.question || '').trim().slice(0, 2000);
 
-  if (!question || (!name && !slackId)) {
+  if (!name || !question) {
     return { statusCode: 400, body: JSON.stringify({ error: 'Name and question are required' }) };
   }
 
-  const fromText = slackId ? `<@${slackId}>` : name;
+  const fromText = name;
 
   const payload = {
     blocks: [
