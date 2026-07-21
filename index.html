@@ -1163,6 +1163,7 @@ function renderQrSection() {
 
   const totalScans = codes.reduce((s, r) => s + (r.totalScans || 0), 0);
   const top = codes[0];
+  const ytdScans = quarter !== 'Q1' ? codes.reduce((s, r) => s + getQrYtd(r.name, year, quarter), 0) : null;
 
   const TYPE_COLOR = { 'Vcard': '#2563EB', 'Website': '#16A34A', 'Publications': '#EA580C' };
 
@@ -1176,7 +1177,8 @@ function renderQrSection() {
     <div class="qr-stat-strip">
       <div class="qr-stat">
         <div class="qr-stat-value">${totalScans.toLocaleString('nl-NL')}</div>
-        <div class="qr-stat-label">Total scans</div>
+        <div class="qr-stat-label">Total scans ${quarter}</div>
+        ${ytdScans !== null ? `<div style="font-size:11px;color:#94A3B8;margin-top:2px;">YTD: ${ytdScans.toLocaleString('nl-NL')}</div>` : ''}
       </div>
       <div class="qr-stat">
         <div class="qr-stat-value">${codes.length}</div>
@@ -1195,7 +1197,8 @@ function renderQrSection() {
             <th>QR Code</th>
             <th>Type</th>
             <th>Links to</th>
-            <th class="right">Scans</th>
+            <th class="right">Scans ${quarter}</th>
+            ${ytdScans !== null ? `<th class="right">YTD ${year}</th>` : ''}
             <th>Top Countries</th>
             <th>Notes</th>
           </tr>
@@ -1204,12 +1207,14 @@ function renderQrSection() {
           ${codes.map((r, i) => {
             const color = TYPE_COLOR[r.type] || '#64748B';
             const safe = safeUrl(r.linksTo);
+            const codeYtd = ytdScans !== null ? getQrYtd(r.name, year, quarter) : null;
             return `<tr>
               <td><span class="rank-badge ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
               <td><div class="post-name">${escHtml(r.name)}</div></td>
               <td><span class="type-badge" style="color:${color};background:${color}18">${escHtml(r.type)}</span></td>
               <td>${safe ? `<a class="post-link" href="${safe}" target="_blank" rel="noopener noreferrer">${escHtml(domainLabel(r.linksTo))} ↗</a>` : (r.linksTo ? escHtml(domainLabel(r.linksTo)) : '—')}</td>
               <td class="right"><strong>${r.totalScans != null ? r.totalScans.toLocaleString('nl-NL') : '—'}</strong></td>
+              ${codeYtd !== null ? `<td class="right" style="color:#94A3B8">${codeYtd > 0 ? codeYtd.toLocaleString('nl-NL') : '—'}</td>` : ''}
               <td class="muted" style="font-size:12px">${escHtml(r.topCountries)}</td>
               <td class="muted">${escHtml(r.notes)}</td>
             </tr>`;
@@ -1507,12 +1512,13 @@ function renderVideoSection() {
     return `<div style="font-size:12px;color:${color};margin-top:4px;">${arrow} ${Math.abs(pct)}% vs prev quarter</div>`;
   };
 
-  const stat = (label, valueHtml, trendHtml = '', warn = false) => `
+  const stat = (label, valueHtml, trendHtml = '', warn = false, ytdHtml = '') => `
     <div style="background:#F8FAFC;border:1px solid ${warn ? '#FCD34D' : '#E2E8F0'};border-radius:12px;padding:20px 24px;position:relative;">
       ${warn ? '<span style="position:absolute;top:10px;right:12px;font-size:11px;color:#92400E;">⚠ approx</span>' : ''}
       <div style="font-size:12px;font-weight:600;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">${label}</div>
       <div style="font-size:28px;font-weight:700;color:#1E293B;">${valueHtml}</div>
       ${trendHtml}
+      ${ytdHtml}
     </div>`;
 
   // Pull top video from Impressions notes if present
@@ -1531,12 +1537,17 @@ function renderVideoSection() {
       <p style="font-size:14px;color:#64748B;margin:0;">${quarter} ${year} · channel overview</p>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;">
-      ${subs   ? stat('Subscribers',       fmt(subs.result, 'Subscribers'),  trend(delta(subs, prevSubs)), subs.warning) : ''}
-      ${views  ? stat('Total Views',        fmt(views.result, 'Page Views'),  trend(delta(views, prevViews)), views.warning) : ''}
-      ${impressions ? stat('Impressions',   fmt(impressions.result, 'Impressions'), trend(delta(impressions, prevImpr)), impressions.warning) : ''}
+      ${subs   ? stat('Subscribers',       fmt(subs.result, 'Subscribers'),  trend(delta(subs, prevSubs)), subs.warning,
+          quarter !== 'Q1' ? `<div style="font-size:11px;color:#94A3B8;margin-top:3px;">as of ${quarter}: ${fmt(getYtd('YouTube','Subscribers',year,quarter),'Subscribers')}</div>` : '') : ''}
+      ${views  ? stat('Total Views',        fmt(views.result, 'Page Views'),  trend(delta(views, prevViews)), views.warning,
+          quarter !== 'Q1' ? `<div style="font-size:11px;color:#94A3B8;margin-top:3px;">YTD: ${fmt(getYtd('YouTube','Page Views',year,quarter),'Page Views')}</div>` : '') : ''}
+      ${impressions ? stat('Impressions',   fmt(impressions.result, 'Impressions'), trend(delta(impressions, prevImpr)), impressions.warning,
+          quarter !== 'Q1' ? `<div style="font-size:11px;color:#94A3B8;margin-top:3px;">YTD: ${fmt(getYtd('YouTube','Impressions',year,quarter),'Impressions')}</div>` : '') : ''}
       ${avgDuration ? stat('Avg View Duration', fmtDuration(avgDuration), '', avgDuration.warning) : ''}
-      ${clicks  ? stat('Total Clicks',      fmt(clicks.result, 'Click-through'), '', clicks.warning) : ''}
-      ${unique  ? stat('Unique Viewers',    fmt(unique.result, 'Unique Visitors'), '', unique.warning) : ''}
+      ${clicks  ? stat('Total Clicks',      fmt(clicks.result, 'Click-through'), '', clicks.warning,
+          quarter !== 'Q1' ? `<div style="font-size:11px;color:#94A3B8;margin-top:3px;">YTD: ${fmt(getYtd('YouTube','Click-through',year,quarter),'Click-through')}</div>` : '') : ''}
+      ${unique  ? stat('Unique Viewers',    fmt(unique.result, 'Unique Visitors'), '', unique.warning,
+          quarter !== 'Q1' ? `<div style="font-size:11px;color:#94A3B8;margin-top:3px;">YTD: ${fmt(getYtd('YouTube','Unique Visitors',year,quarter),'Unique Visitors')}</div>` : '') : ''}
     </div>
     ${notesHtml}
     <div style="margin-top:24px;padding:16px 20px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;color:#92400E;font-size:13px;">
@@ -1562,6 +1573,7 @@ function renderDownloadsSection() {
 
   const totalDl   = docs.reduce((s, r) => s + (r.downloads || 0), 0);
   const topDoc    = docs[0];
+  const ytdDl = quarter !== 'Q1' ? docs.reduce((s, r) => s + getDlYtd(r.name, year, quarter), 0) : null;
 
   // Theme totals
   const themeMap = {};
@@ -1583,7 +1595,8 @@ function renderDownloadsSection() {
     <div class="qr-stat-strip">
       <div class="qr-stat">
         <div class="qr-stat-value">${totalDl.toLocaleString('nl-NL')}</div>
-        <div class="qr-stat-label">Total downloads</div>
+        <div class="qr-stat-label">Total downloads ${quarter}</div>
+        ${ytdDl !== null ? `<div style="font-size:11px;color:#94A3B8;margin-top:2px;">YTD: ${ytdDl.toLocaleString('nl-NL')}</div>` : ''}
       </div>
       <div class="qr-stat">
         <div class="qr-stat-value">${docs.length}</div>
@@ -1618,12 +1631,14 @@ function renderDownloadsSection() {
             <th>Type</th>
             <th>Theme</th>
             <th style="width:60px">Ext</th>
-            <th class="right">Downloads</th>
+            <th class="right">Downloads ${quarter}</th>
+            ${ytdDl !== null ? `<th class="right">YTD ${year}</th>` : ''}
           </tr>
         </thead>
         <tbody>
           ${docs.map((d, i) => {
             const color = TYPE_COLOR[d.documentType] || '#64748B';
+            const docYtd = ytdDl !== null ? getDlYtd(d.name, year, quarter) : null;
             return `<tr>
               <td><span class="rank-badge ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
               <td><div class="post-name">${escHtml(d.name)}</div></td>
@@ -1631,6 +1646,7 @@ function renderDownloadsSection() {
               <td class="muted" style="font-size:12px">${escHtml(d.theme)}</td>
               <td class="muted" style="font-size:12px;text-align:center">${d.external === 'Yes' ? '↗' : ''}</td>
               <td class="right"><strong>${(d.downloads || 0).toLocaleString('nl-NL')}</strong></td>
+              ${docYtd !== null ? `<td class="right" style="color:#94A3B8">${docYtd > 0 ? docYtd.toLocaleString('nl-NL') : '—'}</td>` : ''}
             </tr>`;
           }).join('')}
         </tbody>
@@ -1749,12 +1765,19 @@ function renderContentSection() {
   }
 
   if (newsletters.length > 0) {
+    const nlYtdPosts = quarter !== 'Q1' ? contentRecords.filter(r => ytdQuarters(year, quarter).includes(`${r.year} ${r.quarter}`) && r.contentType === 'Newsletter issue' && r.platform === 'Email newsletter') : [];
+    const nlYtdCount = nlYtdPosts.length;
+    const nlYtdDelivered = nlYtdPosts.reduce((s, r) => s + (r.pageViews || 0), 0);
+    const nlYtdBanner = nlYtdCount > newsletters.length
+      ? `<div style="font-size:12px;color:#64748B;padding:6px 0 12px;border-bottom:1px solid #F1F5F9;margin-bottom:12px;"><strong style="color:#1E293B;">YTD ${year}:</strong> ${nlYtdCount} issues · ${nlYtdDelivered.toLocaleString('nl-NL')} total delivered</div>`
+      : '';
     nlEl.innerHTML = `
       <div class="content-block-header">
         <div class="platform-dot" style="background:#22C55E"></div>
         <span class="content-block-title">Email Newsletter — Issues this quarter</span>
         <span class="content-count">${newsletters.length} issue${newsletters.length > 1 ? 's' : ''}</span>
       </div>
+      ${nlYtdBanner}
       <div class="content-table-wrap">
         <table class="content-table">
           <thead>
@@ -1790,12 +1813,17 @@ function renderContentSection() {
   }
 
   if (linkedinPosts.length > 0) {
+    const liYtdPosts = quarter !== 'Q1' ? contentRecords.filter(r => ytdQuarters(year, quarter).includes(`${r.year} ${r.quarter}`) && r.contentType === 'LinkedIn post') : [];
+    const liYtdBanner = liYtdPosts.length > linkedinPosts.length
+      ? `<div style="font-size:12px;color:#64748B;padding:6px 0 12px;border-bottom:1px solid #F1F5F9;margin-bottom:12px;"><strong style="color:#1E293B;">YTD ${year}:</strong> ${liYtdPosts.length} posts · ${liYtdPosts.reduce((s,r)=>s+(r.pageViews||0),0).toLocaleString('nl-NL')} total impressions</div>`
+      : '';
     linkedinEl.innerHTML = `
       <div class="content-block-header">
         <div class="platform-dot" style="background:#0A66C2"></div>
         <span class="content-block-title">LinkedIn — Top Posts</span>
         <span class="content-count">${linkedinPosts.length} posts this quarter</span>
       </div>
+      ${liYtdBanner}
       <div class="content-table-wrap">
         <table class="content-table">
           <thead>
@@ -1832,12 +1860,17 @@ function renderContentSection() {
   }
 
   if (facebookPosts.length > 0) {
+    const fbYtdPosts = quarter !== 'Q1' ? contentRecords.filter(r => ytdQuarters(year, quarter).includes(`${r.year} ${r.quarter}`) && r.contentType === 'Facebook post') : [];
+    const fbYtdBanner = fbYtdPosts.length > facebookPosts.length
+      ? `<div style="font-size:12px;color:#64748B;padding:6px 0 12px;border-bottom:1px solid #F1F5F9;margin-bottom:12px;"><strong style="color:#1E293B;">YTD ${year}:</strong> ${fbYtdPosts.length} posts · ${fbYtdPosts.reduce((s,r)=>s+(r.pageViews||0),0).toLocaleString('nl-NL')} total impressions</div>`
+      : '';
     fbEl.innerHTML = `
       <div class="content-block-header">
         <div class="platform-dot" style="background:#1877F2"></div>
         <span class="content-block-title">Facebook — Top Posts</span>
         <span class="content-count">${facebookPosts.length} posts this quarter</span>
       </div>
+      ${fbYtdBanner}
       <div class="content-table-wrap">
         <table class="content-table">
           <thead>
@@ -1874,12 +1907,17 @@ function renderContentSection() {
   }
 
   if (instagramPosts.length > 0) {
+    const igYtdPosts = quarter !== 'Q1' ? contentRecords.filter(r => ytdQuarters(year, quarter).includes(`${r.year} ${r.quarter}`) && r.contentType === 'Instagram post') : [];
+    const igYtdBanner = igYtdPosts.length > instagramPosts.length
+      ? `<div style="font-size:12px;color:#64748B;padding:6px 0 12px;border-bottom:1px solid #F1F5F9;margin-bottom:12px;"><strong style="color:#1E293B;">YTD ${year}:</strong> ${igYtdPosts.length} posts · ${igYtdPosts.reduce((s,r)=>s+(r.pageViews||0),0).toLocaleString('nl-NL')} total views</div>`
+      : '';
     igEl.innerHTML = `
       <div class="content-block-header">
         <div class="platform-dot" style="background:#E1306C"></div>
         <span class="content-block-title">Instagram — Top Posts</span>
         <span class="content-count">${instagramPosts.length} posts this quarter</span>
       </div>
+      ${igYtdBanner}
       <div class="content-table-wrap">
         <table class="content-table">
           <thead>
@@ -1914,19 +1952,25 @@ function renderContentSection() {
   }
 
   if (nlfpPages.length > 0) {
+    const nlfpYtdPages = quarter !== 'Q1' ? contentRecords.filter(r => ytdQuarters(year, quarter).includes(`${r.year} ${r.quarter}`) && r.platform === 'nlfoodpartnership.com' && r.contentType === 'Website page') : [];
+    const nlfpYtdViews = nlfpYtdPages.reduce((s, r) => s + (r.pageViews || 0), 0);
+    const nlfpYtdBanner = nlfpYtdPages.length > nlfpPages.length
+      ? `<div style="font-size:12px;color:#64748B;padding:6px 0 12px;border-bottom:1px solid #F1F5F9;margin-bottom:12px;"><strong style="color:#1E293B;">YTD ${year}:</strong> ${nlfpYtdPages.length} pages tracked · ${nlfpYtdViews.toLocaleString('nl-NL')} total page views</div>`
+      : '';
     nlfpEl.innerHTML = `
       <div class="content-block-header">
         <div class="platform-dot" style="background:#2563EB"></div>
         <span class="content-block-title">NLFoodPartnership.com — Page Performance</span>
         <span class="content-count">${nlfpPages.length} page${nlfpPages.length > 1 ? 's' : ''} this quarter</span>
       </div>
+      ${nlfpYtdBanner}
       <div class="content-table-wrap">
         <table class="content-table">
           <thead>
             <tr>
               <th style="width:32px">#</th>
               <th>Page</th>
-              <th class="right">Page Views</th>
+              <th class="right">Page Views ${quarter}</th>
               <th class="right">Unique Visitors</th>
               <th class="right">Avg Time</th>
             </tr>
@@ -1952,12 +1996,18 @@ function renderContentSection() {
   }
 
   if (nfpContent.length > 0) {
+    const nfpYtdItems = quarter !== 'Q1' ? contentRecords.filter(r => ytdQuarters(year, quarter).includes(`${r.year} ${r.quarter}`) && r.platform === 'nfpconnects.com') : [];
+    const nfpYtdViews = nfpYtdItems.reduce((s, r) => s + (r.pageViews || 0), 0);
+    const nfpYtdBanner = nfpYtdItems.length > nfpContent.length
+      ? `<div style="font-size:12px;color:#64748B;padding:6px 0 12px;border-bottom:1px solid #F1F5F9;margin-bottom:12px;"><strong style="color:#1E293B;">YTD ${year}:</strong> ${nfpYtdItems.length} items tracked · ${nfpYtdViews.toLocaleString('nl-NL')} total page views</div>`
+      : '';
     nfpEl.innerHTML = `
       <div class="content-block-header">
         <div class="platform-dot" style="background:#7C3AED"></div>
         <span class="content-block-title">NFPConnects — Content Performance</span>
         <span class="content-count">${nfpContent.length} items this quarter</span>
       </div>
+      ${nfpYtdBanner}
       <div class="content-table-wrap">
         <table class="content-table">
           <thead>
@@ -2106,6 +2156,74 @@ function setCategory(btn) {
   renderPublicationsSection();
 }
 
+// ── YTD helpers ───────────────────────────────────────
+// Metrics that accumulate (sum across quarters for YTD)
+const FLOW_METRICS = new Set([
+  'Impressions','Click-through','Engagement','Delivered','Opens','Page Views',
+  'Downloads','Unique Visitors','Traffic Source','AI Referral Visitors',
+]);
+// Snapshot metrics (point-in-time): Followers, Subscribers — don't sum, just label
+
+function ytdQuarters(year, quarter) {
+  const ORDER = ['Q1','Q2','Q3','Q4'];
+  return ORDER.slice(0, ORDER.indexOf(quarter) + 1).map(q => `${year} ${q}`);
+}
+
+// YTD for quarterly platform stats (allRecords)
+function getYtd(platform, metric, year, quarter) {
+  const isFlow = FLOW_METRICS.has(metric);
+  const qs = ytdQuarters(year, quarter);
+  const recs = qs.flatMap(qstr => {
+    const [y, q] = qstr.split(' ');
+    const matches = allRecords.filter(r =>
+      r.platform === platform && r.metric === metric && r.year === y && r.quarter === q && !r.publication
+    );
+    // prefer non-warning
+    return [matches.find(r => !r.warning) || matches[0]].filter(Boolean);
+  });
+  if (!recs.length) return null;
+  if (isFlow) return recs.reduce((s, r) => s + (r.result || 0), 0);
+  return recs[recs.length - 1].result; // snapshot: latest quarter
+}
+
+// YTD for QR codes (qrRecords) — sum scans across quarters for the same code name
+function getQrYtd(name, year, quarter) {
+  const qs = ytdQuarters(year, quarter);
+  return qs.reduce((sum, qstr) => {
+    const [y, q] = qstr.split(' ');
+    const rec = qrRecords.find(r => r.name === name && r.year === y && r.quarter === q);
+    return sum + (rec?.totalScans || 0);
+  }, 0);
+}
+
+// YTD for downloads (downloadsRecords) — sum downloads for the same doc name
+function getDlYtd(name, year, quarter) {
+  const qs = ytdQuarters(year, quarter);
+  return qs.reduce((sum, qstr) => {
+    const [y, q] = qstr.split(' ');
+    const rec = downloadsRecords.find(r => r.name === name && r.year === y && r.quarter === q);
+    return sum + (rec?.downloads || 0);
+  }, 0);
+}
+
+// YTD banner HTML for content sections
+function ytdBannerHtml(label, posts, year, quarter, sumField) {
+  if (quarter === 'Q1') return ''; // Q1 YTD == Q1, no extra info
+  const qs = ytdQuarters(year, quarter);
+  const ytdPosts = contentRecords.filter(r => {
+    const key = `${r.year} ${r.quarter}`;
+    return qs.includes(key) && posts.some(p => p.platform === r.platform && p.contentType === r.contentType);
+  });
+  const ytdCount = ytdPosts.length;
+  const ytdSum = ytdPosts.reduce((s, r) => s + (r[sumField] || 0), 0);
+  if (!ytdCount) return '';
+  const quarters = qs.map(q => q.split(' ')[1]).join('–');
+  return `<div style="font-size:12px;color:#64748B;padding:6px 0 12px;border-bottom:1px solid #F1F5F9;margin-bottom:12px;">
+    <strong style="color:#1E293B;">YTD ${year} (${quarters}):</strong>
+    ${ytdCount} posts · ${ytdSum.toLocaleString('nl-NL')} total ${sumField === 'pageViews' ? 'impressions/views' : sumField}
+  </div>`;
+}
+
 // ── Formatting ────────────────────────────────────────
 function fmt(value, metric) {
   if (value === null || value === undefined) return '—';
@@ -2224,6 +2342,14 @@ function renderDashboard() {
       qoqHtml = `<div class="qoq neutral">No previous quarter data</div>`;
     }
 
+    // YTD
+    const [selYear, selQ] = selected.split(' ');
+    const ytdVal = selQ !== 'Q1' ? getYtd(platform, primaryMetric, selYear, selQ) : null;
+    const isFlow = FLOW_METRICS.has(primaryMetric);
+    const ytdHtml = ytdVal !== null
+      ? `<div style="font-size:11px;color:#94A3B8;margin-top:3px;">${isFlow ? 'YTD' : 'as of'} ${selQ}: ${fmt(ytdVal, primaryMetric)}</div>`
+      : '';
+
     // Target bar
     let targetHtml = '';
     if (target !== null && primaryVal !== null) {
@@ -2292,6 +2418,7 @@ function renderDashboard() {
         <div class="primary-label">${primaryMetric || ''}</div>
         <div class="primary-value" style="color:${color}">${fmt(primaryVal, primaryMetric)}</div>
         ${qoqHtml}
+        ${ytdHtml}
         ${targetHtml}
       </div>
       ${aiReferralHtml}
