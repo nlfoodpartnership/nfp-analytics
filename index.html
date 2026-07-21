@@ -1521,15 +1521,69 @@ function renderVideoSection() {
       ${ytdHtml}
     </div>`;
 
-  // Pull top video from Impressions notes if present
-  const imprNotes = impressions?.notes || '';
-  const topVideoMatch = imprNotes.match(/Top video[:\s]+["""]?([^""\n(]+)/i);
-  const topVideo = topVideoMatch ? topVideoMatch[1].trim().replace(/["""]/g,'') : null;
+  // Individual videos and shorts from contentRecords
+  const videos = contentRecords
+    .filter(r => r.platform === 'YouTube' && r.contentType === 'YouTube video' && r.year === year && r.quarter === quarter)
+    .sort((a, b) => (b.pageViews || 0) - (a.pageViews || 0));
 
-  const notesHtml = topVideo ? `
-    <div style="margin-top:16px;padding:16px 20px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;font-size:14px;color:#14532D;">
-      <strong>Top video this quarter:</strong> ${escHtml(topVideo)}
-    </div>` : '';
+  const shorts = contentRecords
+    .filter(r => r.platform === 'YouTube' && r.contentType === 'YouTube Short' && r.year === year && r.quarter === quarter)
+    .sort((a, b) => (b.pageViews || 0) - (a.pageViews || 0));
+
+  const fmtSecs = (s) => {
+    if (s == null) return '—';
+    const m = Math.floor(s / 60);
+    const sec = Math.round(s % 60);
+    return m > 0 ? `${m}m ${sec.toString().padStart(2,'0')}s` : `${sec}s`;
+  };
+
+  const videoTableHtml = (items, label, color) => {
+    if (!items.length) return '';
+    const totalViews = items.reduce((s, r) => s + (r.pageViews || 0), 0);
+    const totalLikes = items.reduce((s, r) => s + (r.likes || 0), 0);
+    return `
+      <div style="margin-top:32px;">
+        <div class="content-block-header">
+          <div class="platform-dot" style="background:${color}"></div>
+          <span class="content-block-title">${label}</span>
+          <span class="content-count">${items.length} · ${totalViews.toLocaleString('nl-NL')} total views · ${totalLikes} likes</span>
+        </div>
+        <div class="content-table-wrap">
+          <table class="content-table">
+            <thead>
+              <tr>
+                <th style="width:32px">#</th>
+                <th>Title</th>
+                <th class="right">Views</th>
+                <th class="right">Avg Duration</th>
+                <th class="right">Likes</th>
+                <th class="right">Comments</th>
+                <th class="right">CTR</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((v, i) => {
+                const link = safeUrl(v.url);
+                const warn = v.notes && v.notes.toLowerCase().includes('not reported');
+                return `<tr>
+                  <td><span class="rank-badge ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
+                  <td>
+                    <div class="post-name" title="${escHtml(v.name)}">${escHtml(v.name)}</div>
+                    ${link ? `<a class="post-link" href="${link}" target="_blank" rel="noopener noreferrer">Watch on YouTube ↗</a>` : ''}
+                    ${warn ? `<div style="font-size:11px;color:#F59E0B;margin-top:2px;">⚠ avg duration not reported</div>` : ''}
+                  </td>
+                  <td class="right"><strong>${v.pageViews != null ? v.pageViews.toLocaleString('nl-NL') : '—'}</strong></td>
+                  <td class="right">${!warn ? fmtSecs(v.avgTimeOnPage) : '—'}</td>
+                  <td class="right">${v.likes != null ? v.likes : '—'}</td>
+                  <td class="right">${v.comments != null ? v.comments : '—'}</td>
+                  <td class="right">${v.ctr != null ? v.ctr.toFixed(1) + '%' : '—'}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  };
 
   el.innerHTML = `
     <div style="margin-bottom:24px;">
@@ -1549,10 +1603,8 @@ function renderVideoSection() {
       ${unique  ? stat('Unique Viewers',    fmt(unique.result, 'Unique Visitors'), '', unique.warning,
           quarter !== 'Q1' ? `<div style="font-size:11px;color:#94A3B8;margin-top:3px;">YTD: ${fmt(getYtd('YouTube','Unique Visitors',year,quarter),'Unique Visitors')}</div>` : '') : ''}
     </div>
-    ${notesHtml}
-    <div style="margin-top:24px;padding:16px 20px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;color:#92400E;font-size:13px;">
-      <strong>Coming soon:</strong> individual video performance cards.
-    </div>`;
+    ${videoTableHtml(videos, 'Videos', '#FF0000')}
+    ${videoTableHtml(shorts, 'Shorts', '#FF6B6B')}`;
 }
 
 // ── Downloads ─────────────────────────────────────────
