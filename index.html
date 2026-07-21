@@ -1537,6 +1537,17 @@ function renderVideoSection() {
     return m > 0 ? `${m}m ${sec.toString().padStart(2,'0')}s` : `${sec}s`;
   };
 
+  const getVideoYtd = (name, contentType) => {
+    const qs = ytdQuarters(year, quarter);
+    return qs.reduce((sum, qstr) => {
+      const [y, q] = qstr.split(' ');
+      const rec = contentRecords.find(r => r.name === name && r.contentType === contentType && r.year === y && r.quarter === q);
+      return sum + (rec?.pageViews || 0);
+    }, 0);
+  };
+
+  const showYtd = quarter !== 'Q1';
+
   const videoTableHtml = (items, label, color) => {
     if (!items.length) return '';
     const totalViews = items.reduce((s, r) => s + (r.pageViews || 0), 0);
@@ -1555,6 +1566,7 @@ function renderVideoSection() {
                 <th style="width:32px">#</th>
                 <th>Title</th>
                 <th class="right">Views</th>
+                ${showYtd ? `<th class="right" style="color:#94A3B8">YTD ${year}</th>` : ''}
                 <th class="right">Avg Duration</th>
                 <th class="right">Likes</th>
                 <th class="right">Comments</th>
@@ -1565,6 +1577,7 @@ function renderVideoSection() {
               ${items.map((v, i) => {
                 const link = safeUrl(v.url);
                 const warn = v.notes && v.notes.toLowerCase().includes('not reported');
+                const ytdViews = showYtd ? getVideoYtd(v.name, v.contentType) : null;
                 return `<tr>
                   <td><span class="rank-badge ${i < 3 ? 'top' : ''}">${i + 1}</span></td>
                   <td>
@@ -1573,6 +1586,7 @@ function renderVideoSection() {
                     ${warn ? `<div style="font-size:11px;color:#F59E0B;margin-top:2px;">⚠ avg duration not reported</div>` : ''}
                   </td>
                   <td class="right"><strong>${v.pageViews != null ? v.pageViews.toLocaleString('nl-NL') : '—'}</strong></td>
+                  ${showYtd ? `<td class="right" style="color:#94A3B8">${ytdViews > 0 ? ytdViews.toLocaleString('nl-NL') : '—'}</td>` : ''}
                   <td class="right">${!warn ? fmtSecs(v.avgTimeOnPage) : '—'}</td>
                   <td class="right">${v.likes != null ? v.likes : '—'}</td>
                   <td class="right">${v.comments != null ? v.comments : '—'}</td>
